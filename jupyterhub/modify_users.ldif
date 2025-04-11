@@ -1,0 +1,19 @@
+# Modify user2 - hashed password and scopes (correct format)
+dn: cn=user2,dc=example,dc=org
+changetype: modify
+replace: userPassword
+userPassword: {SSHA}WMzZqqT9llZ5XHsoMjGxjDkfP0X01MPL
+-
+replace: description
+description: scope:read:servers
+description: scope:access:lab
+
+# Add user3 (separate add operation)
+dn: cn=user3,dc=example,dc=org
+changetype: add
+objectClass: inetOrgPerson
+cn: user3
+sn: User Three
+userPassword: password3
+description: scope:admin:servers
+description: scope:write:notebooks
