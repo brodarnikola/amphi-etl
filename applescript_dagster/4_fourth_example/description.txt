@@ -1,0 +1,8 @@
+How to setup, connect C# with Dagster subprocess on macOs? 
+
+1) First install " brew install dotnet " .. this could broke something with node, npm .. so after that check node --version, npm --version .. if there is error with node version, you can do " brew link node "
+2) After that position to folder where you have C# project,
+3) then execute this command " dotnet new globaljson --sdk-version 9.0.105 " or insert here which version you are using instead of this " --sdk-version 9.0.105 "
+4) then execute this command " dotnet build "
+5) then you can run python script,, so position back to folder where you have this " rename_files_pipeline.py" script. 
+Run script with this command " python3 rename_files_pipeline.py "

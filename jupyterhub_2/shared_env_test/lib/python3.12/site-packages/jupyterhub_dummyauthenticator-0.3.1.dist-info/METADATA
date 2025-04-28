@@ -1,0 +1,13 @@
+Metadata-Version: 2.0
+Name: jupyterhub-dummyauthenticator
+Version: 0.3.1
+Summary: Dummy Authenticator for JupyterHub
+Home-page: https://github.com/yuvipanda/jupyterhub-dummyauthenticator
+Author: Yuvi Panda
+Author-email: yuvipanda@gmail.com
+License: 3 Clause BSD
+Platform: UNKNOWN
+
+UNKNOWN
+
+

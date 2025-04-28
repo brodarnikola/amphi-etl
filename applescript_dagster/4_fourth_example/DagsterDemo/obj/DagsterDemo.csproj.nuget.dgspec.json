@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/nikolabrodar/workspace/POC_E_CONTROL/amphi-etl_copy/applescript_dagster/4_fourth_example/DagsterDemo/DagsterDemo.csproj": {}
+  },
+  "projects": {
+    "/Users/nikolabrodar/workspace/POC_E_CONTROL/amphi-etl_copy/applescript_dagster/4_fourth_example/DagsterDemo/DagsterDemo.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/nikolabrodar/workspace/POC_E_CONTROL/amphi-etl_copy/applescript_dagster/4_fourth_example/DagsterDemo/DagsterDemo.csproj",
+        "projectName": "DagsterDemo",
+        "projectPath": "/Users/nikolabrodar/workspace/POC_E_CONTROL/amphi-etl_copy/applescript_dagster/4_fourth_example/DagsterDemo/DagsterDemo.csproj",
+        "packagesPath": "/Users/nikolabrodar/.nuget/packages/",
+        "outputPath": "/Users/nikolabrodar/workspace/POC_E_CONTROL/amphi-etl_copy/applescript_dagster/4_fourth_example/DagsterDemo/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/nikolabrodar/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/opt/homebrew/Cellar/dotnet/9.0.4/libexec/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/9.0.4/libexec/sdk/9.0.105/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

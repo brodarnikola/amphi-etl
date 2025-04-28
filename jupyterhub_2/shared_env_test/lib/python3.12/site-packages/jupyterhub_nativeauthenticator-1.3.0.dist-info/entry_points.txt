@@ -1,0 +1,2 @@
+[jupyterhub.authenticators]
+native = nativeauthenticator:NativeAuthenticator
