@@ -82,61 +82,45 @@ export class SQLLookup extends BaseCoreComponent {
   }
 
   public provideDependencies({ config }): string[] {
-    return ['psycopg2-binary'];
+    return ['sqlalchemy'];
   }
-
+  
   public provideImports({ config }): string[] {
     return [
       "import pandas as pd",
-      "import psycopg2",
-      "from psycopg2 import sql",
-      "from IPython.display import display, HTML",
-      "import io"
+      "from sqlalchemy import create_engine, text",
+      "from IPython.display import display, HTML"
     ];
   }
 
   public generateDatabaseConnectionCode({ config, connectionName }): string {
     return `
-# Create connection parameters
-${connectionName} = {
-    "host": "${config.host}",
-    "port": "${config.port}",
-    "database": "${config.databaseName}",
-    "user": "${config.username}",
-    "password": "${config.password}"
-}`;
+# Construct SQLAlchemy connection string for PostgreSQL
+${connectionName}_url = f"postgresql://${config.username}:${config.password}@${config.host}:${config.port}/${config.databaseName}"
+engine = create_engine(${connectionName}_url)
+`;
   }
 
   public generateComponentCode({ config, outputName }): string {
     const connParamsName = `${outputName}`;
-
+  
     return `
-${this.generateDatabaseConnectionCode({ config, connectionName: connParamsName })}
-
+  ${this.generateDatabaseConnectionCode({ config, connectionName: connParamsName })}
+  
 # Execute multiple SQL statements
 execution_info = []
 results = []
-
+  
 try:
-    # Establish connection
-    conn = psycopg2.connect(**${connParamsName})
-    conn.autocommit = True  # Ensure DML statements commit immediately
-    
-    # Split queries by semicolon and filter out empty/comment-only queries
-    queries = [q.strip() for q in """${config.sqlQuery}""".split(';') 
-              if q.strip() and not q.strip().startswith('--')]
-    
-    for i, query in enumerate(queries):
-        try:
-            with conn.cursor() as cursor:
-                # Execute the query
-                cursor.execute(query)
-                
+    with engine.connect() as connection:
+        queries = [q.strip() for q in """${config.sqlQuery}""".split(';') 
+                   if q.strip() and not q.strip().startswith('--')]
+
+        for i, query in enumerate(queries):
+            try:
+                result = connection.execute(text(query))
                 try:
-                    # Try to fetch results (works for SELECT queries)
-                    records = cursor.fetchall()
-                    colnames = [desc[0] for desc in cursor.description]
-                    df = pd.DataFrame(records, columns=colnames)
+                    df = pd.DataFrame(result.fetchall(), columns=result.keys())
                     results.append(df)
                     display(HTML(f"<h3>Query {i+1} Results:</h3>"))
                     display(df)
@@ -146,11 +130,10 @@ try:
                         'rows_affected': len(df),
                         'message': f"Returned {len(df)} rows"
                     })
-                except psycopg2.ProgrammingError:
-                    # No results to fetch (INSERT/UPDATE/DELETE)
-                    rows_affected = cursor.rowcount
+                except Exception:
+                    rows_affected = result.rowcount
                     results.append(None)
-                    display(HTML(f"<h3>Query {i+1} Execution:</h3>"))
+                    display(HTML(f"<h3>Query {i+1} Executed:</h3>"))
                     display(HTML(f"<p>Rows affected: {rows_affected}</p>"))
                     execution_info.append({
                         'query': query,
@@ -158,27 +141,26 @@ try:
                         'rows_affected': rows_affected,
                         'message': f"Affected {rows_affected} rows"
                     })
-        except Exception as e:
-            results.append(None)
-            display(HTML(f"<h3 style='color:red'>Query {i+1} Failed:</h3>"))
-            display(HTML(f"<pre style='color:red'>{str(e)}</pre>"))
-            execution_info.append({
-                'query': query,
-                'status': 'failed',
-                'rows_affected': 0,
-                'message': str(e)
-            })
-    
+            except Exception as e:
+                results.append(None)
+                display(HTML(f"<h3 style='color:red'>Query {i+1} Failed:</h3>"))
+                display(HTML(f"<pre style='color:red'>{str(e)}</pre>"))
+                execution_info.append({
+                    'query': query,
+                    'status': 'failed',
+                    'rows_affected': 0,
+                    'message': str(e)
+                })
+  
     # Create summary DataFrame
     ${outputName} = pd.DataFrame(execution_info)
     display(HTML("<h2>Execution Summary:</h2>"))
     display(${outputName})
-    
+  
 finally:
-    if 'conn' in locals() and conn:
-        conn.close()
+    engine.dispose()
 `;
-  }
+}
 }
 
 
