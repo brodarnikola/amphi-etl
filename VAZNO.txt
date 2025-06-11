@@ -1,0 +1,3 @@
+Sometimes if it wants to login, but after that user don't see his environment any more, does not see any files, then you can launch this commands 
+" jupyter lab clean
+jupyter lab build "

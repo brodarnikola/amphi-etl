@@ -162,11 +162,7 @@ export abstract class BaseCodeGenerator {
       if (config.customTitle) {
         const generatedCode = component.generateComponentCode({ config });
         const needsNewLine = !generatedCode.startsWith('\n');
-<<<<<<< HEAD
-        code += `\n# ${config.customTitle}${needsNewLine ? '\n' : ''}`;
-=======
         code += `\n# ${config.customTitle}${needsNewLine ? '\n' : ''}`; 
->>>>>>> feature/implement_git_dagster
       }
 
       try {

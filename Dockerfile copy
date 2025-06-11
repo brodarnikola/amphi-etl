@@ -1,0 +1,141 @@
+FROM ubuntu:22.04 as build
+
+LABEL maintainer="Bruno Šimić <bruno@simicmail.com>" \
+    ubuntu-version="22.04" \
+    build-date="2025-03-13" \
+    description="Amphi Docker Image built from source"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Zagreb
+
+# Install system dependencies and Node.js 18 LTS
+RUN apt-get update && \
+    apt_pkgs="nano python3-full libpq-dev python3-dev python3-pip build-essential python3-psycopg2 net-tools dnsutils iputils-ping curl" && \
+    apt-get install --no-install-recommends --no-install-suggests -y ${apt_pkgs} && \
+    # Install Node.js 18 LTS
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    # Clean up
+    rm -rf /var/lib/apt/lists/*
+
+# Install global npm packages
+RUN npm install -g yarn
+
+# Create amphi user and setup directories
+RUN useradd -ms /bin/bash amphi && \
+    mkdir -p /home/amphi/.jupyter && \
+    mkdir -p /home/amphi/workspace && \
+    chown -R amphi:amphi /home/amphi
+
+# Switch to amphi user for building
+USER amphi
+WORKDIR /home/amphi
+
+# Copy source code to user directory
+COPY --chown=amphi:amphi ./amphi-etl /home/amphi/amphi-etl
+COPY --chown=amphi:amphi ./jupyterlab-amphi /home/amphi/jupyterlab-amphi
+
+# Install base Python packages (equivalent to virtual environment setup)
+RUN python3 -m pip install --user jupyterlab notebook
+
+# Build jupyterlab-amphi extension (Step 1 - following manual instructions)
+WORKDIR /home/amphi/jupyterlab-amphi
+
+RUN echo "Building jupyterlab-amphi extension..." && \
+    # Install jupyterlab (already done above, but ensuring it's available)
+    python3 -m pip install --user jupyterlab && \
+    # Update PATH to include local bin directory where jlpm is installed
+    export PATH=$HOME/.local/bin:$PATH && \
+    # Use jlpm as recommended in manual instructions
+    python3 -m jupyter lab --version && \
+    ~/.local/bin/jupyter-lab --version || echo "jlpm not found, using yarn" && \
+    # Check if jlpm exists, if not use yarn
+    if command -v ~/.local/bin/jlpm &> /dev/null; then \
+        ~/.local/bin/jlpm install && \
+        ~/.local/bin/jlpm run build; \
+    else \
+        yarn install && \
+        yarn run build; \
+    fi && \
+    # Install the extension
+    python3 -m pip install --user .
+
+# Verify extension installation (following manual instructions)
+# RUN echo "Verifying jupyterlab-amphi extension installation..." && \
+#     python3 -m jupyter labextension list
+
+# Build amphi-etl (Step 2 - following manual instructions)
+WORKDIR /home/amphi/amphi-etl
+
+# Backup original requirements.txt and modify it to use local jupyterlab-amphi
+RUN cp requirements.txt requirements.txt.backup && \
+    echo "Modifying requirements.txt to use local jupyterlab-amphi..." && \
+    sed -i 's|jupyterlab-amphi==.*|../jupyterlab-amphi|g' requirements.txt || \
+    # If the sed command fails (line not found), add the local path
+    echo "../jupyterlab-amphi" >> requirements.txt
+
+# Install requirements with local jupyterlab-amphi
+RUN echo "Installing amphi-etl requirements with local jupyterlab-amphi..." && \
+    python3 -m pip install --user -r requirements.txt
+
+# Install additional Python packages that might be needed
+RUN python3 -m pip install --user \
+    ensurepath \
+    jupyterhub \
+    jupyterhub-dummyauthenticator \
+    SQLAlchemy \
+    jsonpath-ng \
+    lxml \
+    beautifulsoup4 \
+    html5lib \
+    argcomplete \
+    s3fs \
+    configurable-http-proxy
+
+# Install amphi-etl itself
+RUN echo "Installing amphi-etl..." && \
+    python3 -m pip install --user .
+
+# Restore original requirements.txt (as mentioned in manual instructions)
+RUN cp requirements.txt.backup requirements.txt
+
+# Set working directory back to home
+WORKDIR /home/amphi
+
+# Create startup script that follows the manual launch instructions
+RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
+    echo 'export PATH=$HOME/.local/bin:$PATH' >> /home/amphi/start-amphi.sh && \
+    echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
+    echo 'echo "Starting Amphi..."' >> /home/amphi/start-amphi.sh && \
+    echo 'echo "Workspace directory: $(pwd)"' >> /home/amphi/start-amphi.sh && \
+    echo 'echo "Available extensions:"' >> /home/amphi/start-amphi.sh && \
+    echo 'python3 -m jupyter labextension list' >> /home/amphi/start-amphi.sh && \
+    echo 'echo "Starting JupyterLab with Amphi extension..."' >> /home/amphi/start-amphi.sh && \
+    echo 'jupyter lab --notebook-dir=/home/amphi/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ContentManager.allow_hidden=True' >> /home/amphi/start-amphi.sh && \
+    chmod +x /home/amphi/start-amphi.sh
+
+# Alternative startup script for amphi command (if available)
+RUN echo '#!/bin/bash' > /home/amphi/start-amphi-cmd.sh && \
+    echo 'export PATH=$HOME/.local/bin:$PATH' >> /home/amphi/start-amphi-cmd.sh && \
+    echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi-cmd.sh && \
+    echo 'if command -v amphi &> /dev/null; then' >> /home/amphi/start-amphi-cmd.sh && \
+    echo '    echo "Starting Amphi using amphi command..."' >> /home/amphi/start-amphi-cmd.sh && \
+    echo '    amphi start -w /home/amphi/workspace -i 0.0.0.0 -p 8888' >> /home/amphi/start-amphi-cmd.sh && \
+    echo 'else' >> /home/amphi/start-amphi-cmd.sh && \
+    echo '    echo "amphi command not found, starting JupyterLab..."' >> /home/amphi/start-amphi-cmd.sh && \
+    echo '    jupyter lab --notebook-dir=/home/amphi/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ContentManager.allow_hidden=True' >> /home/amphi/start-amphi-cmd.sh && \
+    echo 'fi' >> /home/amphi/start-amphi-cmd.sh && \
+    chmod +x /home/amphi/start-amphi-cmd.sh
+
+# Final verification step
+# RUN echo "Final verification of installation..." && \
+#     python3 -m jupyter labextension list && \
+#     echo "Build completed successfully!"
+
+EXPOSE 8888
+
+# Define mountable directories
+VOLUME ["/home/amphi/workspace", "/var/log"]
+
+# Use the startup script that tries amphi command first, then falls back to jupyter lab
+ENTRYPOINT ["/home/amphi/start-amphi-cmd.sh"]
