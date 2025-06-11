@@ -112,25 +112,26 @@ execution_info = []
 results = []
   
 try:
-    with engine.connect() as connection:
+    with engine.begin() as connection:
         queries = [q.strip() for q in """${config.sqlQuery}""".split(';') 
                    if q.strip() and not q.strip().startswith('--')]
-
+ 
         for i, query in enumerate(queries):
             try:
                 result = connection.execute(text(query))
-                try:
+                  
+                if result.returns_rows:
                     df = pd.DataFrame(result.fetchall(), columns=result.keys())
-                    results.append(df)
-                    display(HTML(f"<h3>Query {i+1} Results:</h3>"))
-                    display(df)
+                    #results.append(df)
+                    #display(HTML(f"<h3>Query {i+1} Results:</h3>"))
+                    display(df)  # ✅ shows the actual data
                     execution_info.append({
                         'query': query,
                         'status': 'success',
                         'rows_affected': len(df),
                         'message': f"Returned {len(df)} rows"
                     })
-                except Exception:
+                else:
                     rows_affected = result.rowcount
                     results.append(None)
                     display(HTML(f"<h3>Query {i+1} Executed:</h3>"))
@@ -152,15 +153,17 @@ try:
                     'message': str(e)
                 })
   
-    # Create summary DataFrame
+    # Summary table
     ${outputName} = pd.DataFrame(execution_info)
-    display(HTML("<h2>Execution Summary:</h2>"))
-    display(${outputName})
+    #display(HTML("<h2>Execution Summary:</h2>"))
+    #display(${outputName})
   
 finally:
     engine.dispose()
 `;
-}
+  }
+
+
 }
 
 
