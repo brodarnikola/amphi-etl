@@ -88,7 +88,7 @@ export class SQLLookup extends BaseCoreComponent {
   public provideImports({ config }): string[] {
     return [
       "import pandas as pd",
-      "from sqlalchemy import create_engine, text",
+      "import sqlalchemy",
       "from IPython.display import display, HTML"
     ];
   }
@@ -97,7 +97,7 @@ export class SQLLookup extends BaseCoreComponent {
     return `
 # Construct SQLAlchemy connection string for PostgreSQL
 ${connectionName}_url = f"postgresql://${config.username}:${config.password}@${config.host}:${config.port}/${config.databaseName}"
-engine = create_engine(${connectionName}_url)
+engine = sqlalchemy.create_engine(${connectionName}_url)
 `;
   }
 
@@ -118,13 +118,13 @@ try:
  
         for i, query in enumerate(queries):
             try:
-                result = connection.execute(text(query))
+                result = connection.execute(sqlalchemy.text(query))
                   
                 if result.returns_rows:
-                    df = pd.DataFrame(result.fetchall(), columns=result.keys())
-                    #results.append(df)
-                    #display(HTML(f"<h3>Query {i+1} Results:</h3>"))
-                    display(df)  # ✅ shows the actual data
+                    df = pd.DataFrame(result.fetchall(), columns=result.keys()) 
+                    if not df.empty:
+                        display(HTML(f"<h3>Query {i+1} Results:</h3>"))
+                        display(df)
                     execution_info.append({
                         'query': query,
                         'status': 'success',
@@ -133,9 +133,6 @@ try:
                     })
                 else:
                     rows_affected = result.rowcount
-                    results.append(None)
-                    display(HTML(f"<h3>Query {i+1} Executed:</h3>"))
-                    display(HTML(f"<p>Rows affected: {rows_affected}</p>"))
                     execution_info.append({
                         'query': query,
                         'status': 'success',
@@ -155,8 +152,6 @@ try:
   
     # Summary table
     ${outputName} = pd.DataFrame(execution_info)
-    #display(HTML("<h2>Execution Summary:</h2>"))
-    #display(${outputName})
   
 finally:
     engine.dispose()
@@ -165,79 +160,3 @@ finally:
 
 
 }
-
-
-
-
-// import { sqlServerIcon } from '../../icons'; 
-// import { BaseCoreComponent } from '../BaseCoreComponent';
-
-// export class SQLLookup  extends BaseCoreComponent {
-//   constructor() {
-//     const defaultConfig = {
-//       connection: "",
-//       queries: ""
-//     };
-    
-//     const form = {
-//       idPrefix: "component__form",
-//       fields: [
-//         // {
-//         //   type: "select",
-//         //   label: "Database Connection",
-//         //   id: "connection",
-//         //   placeholder: "Select database connection",
-//         //   connection: "Database",
-//         //   options: []
-//         // },
-//         {
-//           type: "codeTextarea",
-//           label: "SQL Queries",
-//           id: "queries",
-//           placeholder: "Enter your SQL queries (separate multiple queries with semicolons)",
-//           mode: "sql",
-//           height: 300
-//         }
-//       ],
-//     };
-    
-//     const description = "Execute multiple SQL queries against a database connection. Separate queries with semicolons.";
-
-//     super("SQL Lookup", "sqlLookup", description, "pandas_df_processor", [], "processors.Databases", sqlServerIcon, defaultConfig, form);
-//   }
-
-//   public provideImports({ config }): string[] {
-//     return ["import pandas as pd", "import sqlalchemy"];
-//   }
-
-//   public generateComponentCode({ config, inputName }): string {
-//     // if (!config.connection) {
-//     //   return `# No database connection selected\n${inputName} = pd.DataFrame()`;
-//     // }
-
-//     const uniqueEngineName = `${inputName}Engine`;
-    
-//     return `
-// # Create database connection
-// ${uniqueEngineName} = sqlalchemy.create_engine("${config.connection}")
-
-// # Split queries by semicolon and filter out empty queries
-// queries = [q.strip() for q in """${config.queries}""".split(';') if q.strip()]
-
-// results = []
-// try:
-//     for i, query in enumerate(queries):
-//         # Execute each query and store result
-//         result = pd.read_sql(query, ${uniqueEngineName})
-//         results.append(result)
-        
-//         # Store each result in a separate variable
-//         globals()[f"query_result_{i}"] = result
-// finally:
-//     ${uniqueEngineName}.dispose()
-
-// # Combine all results into a single DataFrame if needed
-// ${inputName} = pd.concat(results, axis=0) if results else pd.DataFrame()
-// `;
-//   }
-// }
