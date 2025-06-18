@@ -1,0 +1,18 @@
+services:
+
+  amphi:
+    image: xpertmind/amphi:0.8.28e
+    container_name: amphisetup
+    hostname: amphisetup
+    volumes:
+        - ./volume/amphi:/home/amphi/workspace
+    ports:
+        - 8888:8888
+    networks:
+        - net_services
+
+
+networks:
+  net_services:
+    driver: bridge
+    name: net_services
