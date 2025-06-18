@@ -25,7 +25,6 @@ WORKDIR /home/amphi
 # Copy source code
 COPY --chown=amphi:amphi ./amphi-etl /home/amphi/amphi-etl
 COPY --chown=amphi:amphi ./jupyterlab-amphi /home/amphi/jupyterlab-amphi
-COPY --chown=amphi:amphi ./resources /home/amphi/resources
 
 # Build jupyterlab-amphi
 WORKDIR /home/amphi/jupyterlab-amphi
@@ -70,19 +69,8 @@ WORKDIR /home/amphi
 COPY --from=builder --chown=amphi:amphi /home/amphi/.local /home/amphi/.local
 COPY --from=builder --chown=amphi:amphi /home/amphi/amphi-etl /home/amphi/amphi-etl
 COPY --from=builder --chown=amphi:amphi /home/amphi/jupyterlab-amphi /home/amphi/jupyterlab-amphi
-COPY --from=builder --chown=amphi:amphi /home/amphi/resources /home/amphi/resources
 
 # Create startup script
-# RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
-#     echo 'export PATH=$HOME/.local/bin:$PATH' >> /home/amphi/start-amphi.sh && \
-#     echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
-#     echo 'if command -v amphi &> /dev/null; then' >> /home/amphi/start-amphi.sh && \
-#     echo '    amphi start -w /home/amphi/workspace -i 0.0.0.0 -p 8888' >> /home/amphi/start-amphi.sh && \
-#     echo 'else' >> /home/amphi/start-amphi.sh && \
-#     echo '    jupyter lab --notebook-dir=/home/amphi/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ContentManager.allow_hidden=True' >> /home/amphi/start-amphi.sh && \
-#     echo 'fi' >> /home/amphi/start-amphi.sh && \
-#     chmod +x /home/amphi/start-amphi.sh
-
 RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
     echo 'export PATH=$HOME/.local/bin:$PATH' >> /home/amphi/start-amphi.sh && \
     echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
@@ -91,10 +79,7 @@ RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
     echo 'else' >> /home/amphi/start-amphi.sh && \
     echo '    jupyter lab --notebook-dir=/home/amphi/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ContentManager.allow_hidden=True' >> /home/amphi/start-amphi.sh && \
     echo 'fi' >> /home/amphi/start-amphi.sh && \
-    chmod +x /home/amphi/start-amphi.sh && \
-    mkdir -p /home/amphi/.jupyter && \
-    echo "c = get_config()  #noqa" > /home/amphi/.jupyter/jupyter_server_config.py && \
-    echo "c.IdentityProvider.token=''" >> /home/amphi/.jupyter/jupyter_server_config.py
+    chmod +x /home/amphi/start-amphi.sh
 
 EXPOSE 8888
 VOLUME ["/home/amphi/workspace"]

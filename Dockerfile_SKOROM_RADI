@@ -25,7 +25,6 @@ WORKDIR /home/amphi
 # Copy source code
 COPY --chown=amphi:amphi ./amphi-etl /home/amphi/amphi-etl
 COPY --chown=amphi:amphi ./jupyterlab-amphi /home/amphi/jupyterlab-amphi
-COPY --chown=amphi:amphi ./resources /home/amphi/resources
 
 # Build jupyterlab-amphi
 WORKDIR /home/amphi/jupyterlab-amphi
@@ -43,6 +42,9 @@ RUN cp requirements.txt requirements.txt.backup && \
     python3 -m pip install --user --no-cache-dir . && \
     cp requirements.txt.backup requirements.txt
 
+# Install JupyterHub
+RUN python3 -m pip install --user --no-cache-dir jupyterhub
+
 # Final stage - runtime only
 FROM ubuntu:22.04
 
@@ -55,13 +57,19 @@ RUN apt-get update && \
         python3 \
         python3-pip \
         libpq5 \
-        nodejs && \
+        curl \
+        ca-certificates && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create user
 RUN useradd -ms /bin/bash amphi && \
     mkdir -p /home/amphi/workspace && \
     chown -R amphi:amphi /home/amphi
+
+# Install configurable-http-proxy globally (as root)
+RUN npm install -g configurable-http-proxy
 
 USER amphi
 WORKDIR /home/amphi
@@ -70,33 +78,41 @@ WORKDIR /home/amphi
 COPY --from=builder --chown=amphi:amphi /home/amphi/.local /home/amphi/.local
 COPY --from=builder --chown=amphi:amphi /home/amphi/amphi-etl /home/amphi/amphi-etl
 COPY --from=builder --chown=amphi:amphi /home/amphi/jupyterlab-amphi /home/amphi/jupyterlab-amphi
-COPY --from=builder --chown=amphi:amphi /home/amphi/resources /home/amphi/resources
+
+# Copy JupyterHub configuration
+COPY --chown=amphi:amphi ./jupyterhub_2/jupyterhub_config.py /home/amphi/jupyterhub_config.py
 
 # Create startup script
 # RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
-#     echo 'export PATH=$HOME/.local/bin:$PATH' >> /home/amphi/start-amphi.sh && \
+#     echo 'export PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin' >> /home/amphi/start-amphi.sh && \
 #     echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
-#     echo 'if command -v amphi &> /dev/null; then' >> /home/amphi/start-amphi.sh && \
-#     echo '    amphi start -w /home/amphi/workspace -i 0.0.0.0 -p 8888' >> /home/amphi/start-amphi.sh && \
-#     echo 'else' >> /home/amphi/start-amphi.sh && \
-#     echo '    jupyter lab --notebook-dir=/home/amphi/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ContentManager.allow_hidden=True' >> /home/amphi/start-amphi.sh && \
-#     echo 'fi' >> /home/amphi/start-amphi.sh && \
+#     echo 'echo "Starting JupyterHub with Amphi integration..."' >> /home/amphi/start-amphi.sh && \
+#     echo 'jupyterhub --config /home/amphi/jupyterhub_config.py --ip=127.0.0.1 --port=8000' >> /home/amphi/start-amphi.sh && \
 #     chmod +x /home/amphi/start-amphi.sh
 
-RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
-    echo 'export PATH=$HOME/.local/bin:$PATH' >> /home/amphi/start-amphi.sh && \
-    echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
-    echo 'if command -v amphi &> /dev/null; then' >> /home/amphi/start-amphi.sh && \
-    echo '    amphi start -w /home/amphi/workspace -i 0.0.0.0 -p 8888' >> /home/amphi/start-amphi.sh && \
-    echo 'else' >> /home/amphi/start-amphi.sh && \
-    echo '    jupyter lab --notebook-dir=/home/amphi/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ContentManager.allow_hidden=True' >> /home/amphi/start-amphi.sh && \
-    echo 'fi' >> /home/amphi/start-amphi.sh && \
-    chmod +x /home/amphi/start-amphi.sh && \
-    mkdir -p /home/amphi/.jupyter && \
-    echo "c = get_config()  #noqa" > /home/amphi/.jupyter/jupyter_server_config.py && \
-    echo "c.IdentityProvider.token=''" >> /home/amphi/.jupyter/jupyter_server_config.py
 
-EXPOSE 8888
+# RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
+#     echo 'export PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin' >> /home/amphi/start-amphi.sh && \
+#     echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
+#     echo 'echo "Starting JupyterHub with Amphi integration..."' >> /home/amphi/start-amphi.sh && \
+#     echo 'jupyterhub /home/amphi/jupyterhub_config.py' >> /home/amphi/start-amphi.sh && \
+#     chmod +x /home/amphi/start-amphi.sh
+
+
+# Create startup script with correct JupyterHub command
+RUN echo '#!/bin/bash' > /home/amphi/start-amphi.sh && \
+    echo 'export PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin' >> /home/amphi/start-amphi.sh && \
+    echo 'cd /home/amphi/workspace' >> /home/amphi/start-amphi.sh && \
+    echo 'echo "Starting JupyterHub with Amphi integration..."' >> /home/amphi/start-amphi.sh && \
+    echo 'jupyterhub --config=/home/amphi/jupyterhub_config.py --ip=0.0.0.0 --port=8000' >> /home/amphi/start-amphi.sh && \
+    chmod +x /home/amphi/start-amphi.sh
+    
+
+
+EXPOSE 8000
 VOLUME ["/home/amphi/workspace"]
 
 ENTRYPOINT ["/home/amphi/start-amphi.sh"]
+
+# I GET BACK THIS ERROR WHEN I TRY TO BUILD THE IMAGE
+# " File "/home/amphi/.local/bin/jupyterhub-singleuser", line 5, in <module> ragamphi17 | from jupyterhub.singleuser import main ragamphi17 | ModuleNotFoundError: No module named 'jupyterhub' "
