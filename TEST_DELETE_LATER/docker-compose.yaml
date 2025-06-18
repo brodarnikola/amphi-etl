@@ -1,13 +1,13 @@
 services:
 
   amphi:
-    image: xpertmind/amphi:0.8.28e
+    image: xpertmind/amphi:0.8.28p
     container_name: amphisetup
     hostname: amphisetup
     volumes:
         - ./volume/amphi:/home/amphi/workspace
     ports:
-        - 8888:8888
+        - 8000:8000
     networks:
         - net_services
 
