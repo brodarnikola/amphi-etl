@@ -66,6 +66,7 @@ export { ParquetFileOutput } from './outputs/files/ParquetFileOutput';
 export { XmlFileOutput } from './outputs/files/XmlFileOutput';
 
 // Outputs Database
+export { ClickhouseOutput } from './outputs/databases/ClickhouseOutput';
 export { PostgresOutput } from './outputs/databases/PostgresOutput';
 export { MySQLOutput } from './outputs/databases/MySQLOutput';
 export { SnowflakeOutput } from './outputs/databases/SnowflakeOutput';

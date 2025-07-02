@@ -9,7 +9,7 @@ import { ComponentManager } from "@amphi/pipeline-components-manager";
 import {
   Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, Filter, RestInput,
   SplitColumn, Deduplicate, ExpandList, Sample, Sort, RenameColumns, TypeConverter, Extract, GoogleSheetsInput, GoogleSheetsOutput, FilterColumns, Join, SQLLookup, TransformInput, TransformInput2,
-  ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
+  ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, ClickhouseOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
   EnvVariables, EnvFile, Transpose, Unite, Pivot, Annotation, ODBCInput, PdfTablesInput, Summary, LocalFileInput, FlattenJSON,
   DataCleansing, GenerateIDColumn, SqlServerInput, OracleInput, Connection, SnowflakeInput, FormulaRow, InlineInput, S3FileOutput, S3FileInput,
   SnowflakeOutput, SqlServerOutput, OracleOutput, CustomInput, CustomOutput, FileUtils, FrequencyAnalysis, FormExample,UniqueKeyDetector,FileAction,DataframeList,DataframeDelete,HierarchyPath
@@ -18,7 +18,7 @@ import {
 // Export allow the component to be used as a base component in different packages
 export { Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, Filter, RestInput,
   SplitColumn, Deduplicate, ExpandList, Sample, Sort, RenameColumns, TypeConverter, Extract, GoogleSheetsInput, GoogleSheetsOutput, FilterColumns, Join, SQLLookup, TransformInput, TransformInput2, 
-  ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
+  ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, ClickhouseOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
   EnvVariables, EnvFile, Transpose, Unite, Pivot, Annotation, ODBCInput, PdfTablesInput, Summary, LocalFileInput, FlattenJSON,
   DataCleansing, GenerateIDColumn, SqlServerInput, OracleInput, Connection, SnowflakeInput, FormulaRow, InlineInput, S3FileOutput, S3FileInput,
   SnowflakeOutput, SqlServerOutput, OracleOutput, CustomInput, CustomOutput, FileUtils, FrequencyAnalysis, FormExample,UniqueKeyDetector,FileAction,DataframeList,DataframeDelete,HierarchyPath }
@@ -99,6 +99,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     componentService.addComponent(S3FileOutput.getInstance())
     componentService.addComponent(MySQLOutput.getInstance())
     componentService.addComponent(PostgresOutput.getInstance())
+    componentService.addComponent(ClickhouseOutput.getInstance())
     componentService.addComponent(Console.getInstance())
     componentService.addComponent(SnowflakeOutput.getInstance())
     componentService.addComponent(SqlServerOutput.getInstance())
