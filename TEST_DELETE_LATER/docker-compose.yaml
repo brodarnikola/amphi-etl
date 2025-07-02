@@ -1,7 +1,8 @@
 services:
 
   amphi:
-    image: xpertmind/amphi:0.8.28p
+    #image: xpertmind/amphi:0.8.28p
+    image: xpertmind/amphi:0.8.28arm64b
     container_name: amphisetup
     hostname: amphisetup
     volumes:
