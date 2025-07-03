@@ -12,7 +12,7 @@ import "ace-builds/src-noconflict/ext-language_tools";
 
 export class TransformInput2 extends PipelineComponent<ComponentItem>() {
 
-    public _name = "JSON Range Input";
+    public _name = "JSON Range Input 2";
     public _id = "jsonRangeInput";
     public _type = "pandas_df_processor";
     public _category = "transforms";
@@ -76,7 +76,7 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
         return (
             <ConfigProvider theme={{ token: { colorPrimary: '#5F9B97' } }}> 
                 <Modal
-                    title="JSON Range Input"
+                    title="JSON Range Input 2"
                     open={modalOpen}
                     onOk={() => {
                         const updatedData = {
