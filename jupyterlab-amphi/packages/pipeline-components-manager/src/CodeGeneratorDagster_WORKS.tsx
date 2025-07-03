@@ -1,5 +1,5 @@
 // ================================================
-// CodeGeneratorDagster.ts - Fixed Version
+// CodeGeneratorDagster.ts
 // ================================================
 
 import {
@@ -36,12 +36,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
     const uniqueDependencies = new Set<string>();
     const uniqueFunctions = new Set<string>();
 
-    // Track default component names and their counts
-    const defaultNameCounts = new Map<string, number>();
-    const usedOpNames = new Set<string>();
-    const nodeToOpName = new Map<string, string>();
-
-    // Collect imports, dependencies, and functions
+    // Collect
     for (const nodeId of nodesToTraverse) {
       const node = nodesMap.get(nodeId);
       if (!node) continue;
@@ -56,22 +51,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
       }
     }
 
-    // First pass: Count how many times each default name appears
-    for (const nodeId of nodesToTraverse) {
-      const node = nodesMap.get(nodeId);
-      if (!node) continue;
-      const config: any = node.data as any;
-      
-      // Only count components that use default naming (no custom title)
-      if (!config.customTitle || config.customTitle.trim() === '') {
-        const defaultName = this.generateReadableName(node.type);
-        defaultNameCounts.set(defaultName, (defaultNameCounts.get(defaultName) || 0) + 1);
-      }
-    }
-
-    // Generate op definitions with unique names
-    const defaultNameCounters = new Map<string, number>();
-    
+    // ----------------  -----------  START FIRST FIX , IT WORKS.. I TRIED IT -------------------------------
     for (const nodeId of nodesToTraverse) {
       const node = nodesMap.get(nodeId);
       if (!node) continue;
@@ -80,40 +60,8 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
       const component = componentService.getComponent(node.type);
       const componentType = component._type;
 
-      let opName: string;
-      
-      // Check if this component has a custom title
-      if (config.customTitle && config.customTitle.trim() !== '') {
-        // For custom titles, use the custom title directly (no numbering)
-        opName = this.generateReadableName(config.customTitle);
-        
-        // Ensure uniqueness for custom titles
-        let counter = 1;
-        let finalOpName = opName;
-        while (usedOpNames.has(finalOpName)) {
-          finalOpName = opName.replace('Op', '') + counter + 'Op';
-          counter++;
-        }
-        opName = finalOpName;
-      } else {
-        // For default naming, apply numbering logic based on default name
-        const defaultName = this.generateReadableName(node.type);
-        const totalCount = defaultNameCounts.get(defaultName) || 1;
-        
-        if (totalCount === 1) {
-          // If there's only one instance with this default name, use base name
-          opName = defaultName;
-        } else {
-          // If there are multiple instances, number them starting from 1
-          const currentCounter = (defaultNameCounters.get(defaultName) || 0) + 1;
-          defaultNameCounters.set(defaultName, currentCounter);
-          // Fixed: Keep the full name and add number before "Op"
-          opName = defaultName.replace('Op', '') + currentCounter + 'Op';
-        }
-      }
-      
-      usedOpNames.add(opName);
-      nodeToOpName.set(nodeId, opName);
+      // Generate a meaningful op name based on component title or type
+      let opName = this.generateReadableName(config.customTitle || node.type);
 
       // Determine inputs and outputs based on component type
       let opInputs: string[] = [];
@@ -135,10 +83,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
             outputName: 'result'
           });
 
-          //opCode = originalCode;
-          
-          // Remove the first comment line if it exists
-          opCode = originalCode.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
+          opCode = originalCode;
           break;
         }
 
@@ -211,28 +156,25 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
           continue;
       }
 
-      const opDef = `@op
+      
+const opDef = `@op
 def ${opName}(${opInputs.join(', ')}):
   """ ${config.customTitle || node.type} """
-  print("Starting ${opName}")
-${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#')).map(line => '  ' + line).join('\n')}
+${opCode.split('\n').map(line => line.trim() ? '  ' + line : '').join('\n')}
   ${opOutputs.length > 0 ? 'return result' : 'return'}
+\n`; 
 
-`;
-
-      opDefinitions.push(opDef);
+opDefinitions.push(opDef);
     } 
-
-    // Build job definition using the unique op names
+    // Build job definition
     const jobDefinition = this.generateDagsterJobDefinition(
       flow,
       nodesMap,
       nodeDependencies,
-      nodesToTraverse,
-      nodeToOpName // Pass the mapping of nodeId to opName
+      nodesToTraverse
     );
 
-    // Combine all parts
+    // Combine
     const now = new Date();
     const dateString = now.toISOString().replace(/T/, ' ').replace(/\..+/, '');
     const dateComment = `# Source code generated by Amphi for Dagster\n# Date: ${dateString}\n`;
@@ -260,26 +202,27 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
     flow: Flow,
     nodesMap: Map<string, Node>,
     nodeDependencies: Map<string, string[]>,
-    nodesToTraverse: string[],
-    nodeToOpName: Map<string, string> // New parameter for node to op name mapping
+    nodesToTraverse: string[]
   ): string {
+    const nodeToOp = new Map<string, string>();
     const processedNodes = new Set<string>();
     const resultVar = new Map<string, string>();
 
-    // Create result variable names based on the actual op names
     for (const nodeId of nodesToTraverse) {
-      const opName = nodeToOpName.get(nodeId);
-      if (!opName) continue;
-      
+      const node = nodesMap.get(nodeId);
+      if (!node) continue;
+      const config: any = node.data;
+      const opName = this.generateReadableName(config.customTitle || node.type);
+      nodeToOp.set(nodeId, opName);
+
       const rVar = opName.replace('Op', 'Result');
       resultVar.set(nodeId, rVar);
     }
 
     let jobCode = '\n\n@job\ndef dagster_pipeline():\n';
     const dependencyGraph = new Map<string, string[]>();
-    
     for (const edge of flow.edges) {
-      if (!nodeToOpName.has(edge.source) || !nodeToOpName.has(edge.target)) continue;
+      if (!nodeToOp.has(edge.source) || !nodeToOp.has(edge.target)) continue;
       if (!dependencyGraph.has(edge.target)) {
         dependencyGraph.set(edge.target, []);
       }
@@ -289,9 +232,8 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
     const startingNodes = nodesToTraverse.filter(id =>
       !dependencyGraph.has(id) || dependencyGraph.get(id)!.length === 0
     );
-    
     for (const nodeId of startingNodes) {
-      const op = nodeToOpName.get(nodeId);
+      const op = nodeToOp.get(nodeId);
       const r = resultVar.get(nodeId);
       if (!op || !r) continue;
       jobCode += `    ${r} = ${op}()\n`;
@@ -300,7 +242,7 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
 
     for (const nodeId of nodesToTraverse) {
       if (processedNodes.has(nodeId)) continue;
-      const op = nodeToOpName.get(nodeId);
+      const op = nodeToOp.get(nodeId);
       const r = resultVar.get(nodeId)!;
       const deps = dependencyGraph.get(nodeId) || [];
 
@@ -320,28 +262,14 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
   }
 
   static generateReadableName(rawName: string): string {
-    // Clean the name: remove special characters, replace spaces with underscores
-    const cleanName = rawName
-      .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
-      .replace(/\s+/g, '_') // Replace spaces with underscores
-      .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
-
-    // Convert to camelCase
-    const camelCaseName = cleanName
-      .split('_')
-      .map((word, index) => {
-        if (word.length === 0) return '';
-        return index === 0
+    const camelCaseName = rawName
+      .split(/(?=[A-Z])/)
+      .map((word, index) =>
+        index === 0
           ? word.toLowerCase()
-          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      })
+          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      )
       .join('');
-
-    // Ensure it starts with a letter (add 'op' prefix if it starts with a number)
-    const validName = /^[a-zA-Z]/.test(camelCaseName) 
-      ? camelCaseName 
-      : 'op' + camelCaseName.charAt(0).toUpperCase() + camelCaseName.slice(1);
-
-    return validName + 'Op';
+    return camelCaseName + 'Op';
   }
 }
