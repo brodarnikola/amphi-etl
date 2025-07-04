@@ -6,7 +6,6 @@ export { JsonFileInput } from './inputs/files/JsonFileInput';
 export { XmlFileInput } from './inputs/files/XmlFileInput';
 export { InlineInput } from './inputs/InlineInput';
 export { TransformInput } from './inputs/TransformInput';
-//export { TransformInput2 } from './inputs/TransformInput2';
 export { WordFileInput } from './inputs/files/WordFileInput';
 export { PdfTablesInput } from './inputs/files/PdfTablesInput';
 export { HtmlFileInput } from './inputs/files/HtmlFileInput';
