@@ -334,8 +334,6 @@ export class TransformInput extends PipelineComponent<ComponentItem>() {
 ${outputName}_dict = ${inputName}['json_data'].iloc[0]
 
 print(f"Total keys in input: {len(${outputName}_dict)}")
-print(f"Sample keys: {list(${outputName}_dict.keys())[:10]}")
-print("Filtering keys...")
 
 # Create helper function for range comparison
 def in_range(key, ranges):
@@ -360,51 +358,32 @@ def in_range(key, ranges):
         end_letter = end[0].upper()
         end_num = int(end[1:]) if end[1:].isdigit() else float('inf')
 
-        print(f"Checking key '{key}' against range '{range_str}'")
-        print(f"Range: {start} to {end}")
-        print(f"Key: {key}")
-
         # Convert letters to ASCII values for comparison
         key_ord = ord(key_letter)
         start_ord = ord(start_letter)
         end_ord = ord(end_letter)
 
-        print(f"Column check: {start_letter}({start_ord}) <= {key_letter}({key_ord}) <= {end_letter}({end_ord})")
-
         # Check if key is within the letter range
         if start_ord <= key_ord <= end_ord:
-            print("✓ Key is within column range")
             
             # For same-letter ranges, check number
             if key_letter == start_letter and key_letter == end_letter:
-                print(f"Same column range: {start_num} <= {key_num} <= {end_num} = {start_num <= key_num <= end_num}")
                 if start_num <= key_num <= end_num:
-                    print(f"✓ Key '{key}' matches range '{range_str}'")
                     return True
             else:
                 # Multi-column range (e.g., E5-G8)
-                print(f"Multi-column range detected")
                 if key_letter == start_letter:
                     # For start column, row must be >= start_num AND <= end_num
                     is_in_range = start_num <= key_num <= end_num
-                    print(f"Start column: {start_num} <= {key_num} <= {end_num} = {is_in_range}")
                 elif key_letter == end_letter:
                     # For end column, row must be >= start_num AND <= end_num  
                     is_in_range = start_num <= key_num <= end_num
-                    print(f"End column: {start_num} <= {key_num} <= {end_num} = {is_in_range}")
                 else:
                     # For middle columns, row must be within the range bounds
                     is_in_range = start_num <= key_num <= end_num
-                    print(f"Middle column: {start_num} <= {key_num} <= {end_num} = {is_in_range}")
 
-                if is_in_range:
-                    print(f"✓ Key '{key}' matches range '{range_str}'")
+                if is_in_range: 
                     return True
-        else:
-            print("✗ Key is outside column range")
-        
-        print(f"✗ Key '{key}' does not match any range")
-        print()
     
     return False
 
