@@ -52,7 +52,6 @@ export class SQLLookup extends BaseCoreComponent {
           label: "Password",
           id: "password",
           placeholder: "Enter password",
-          connection: "Postgres",
           inputType: "password",
           advanced: true
         },
@@ -118,11 +117,11 @@ def process_sql_with_input_data(query, input_df):
 
     # Find all input.DataFrame references - support both formats
     # Pattern 1: input.DataFrame({'ColumnName'}) - with quotes and braces
-    pattern1 = r"input\\.DataFrame\\(\\{['\"]([^'\"]+)['\"]\\}\\)"
+    pattern1 = r"input\.DataFrame\(\{\'([^\']+)\'\}\)"
     matches1 = re.findall(pattern1, query)
 
     # Pattern 2: input.DataFrame(ColumnName) - without quotes and braces
-    pattern2 = r"input\\.DataFrame\\(([A-Za-z_][A-Za-z0-9_]*)\\)"
+    pattern2 = r"input\.DataFrame\(([A-Za-z_][A-Za-z0-9_]*)\)"
     matches2 = re.findall(pattern2, query)
 
     # Combine matches from both patterns
@@ -171,7 +170,7 @@ def process_sql_with_input_data(query, input_df):
     return processed_queries
 
 # Process the SQL query
-raw_query = \"\"\"${config.sqlQuery}\"\"\"
+raw_query = """${config.sqlQuery}"""
 processed_queries = process_sql_with_input_data(raw_query, ${inputName})
 
 # Execute queries and collect results
