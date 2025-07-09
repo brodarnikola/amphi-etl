@@ -116,9 +116,21 @@ def process_sql_with_input_data(query, input_df):
         print("Warning: No input data available")
         return [query]
 
-    # Find all input.DataFrame references
-    pattern = r"input\\.DataFrame\\(\\{'([^']+)'\\}\\)"
-    matches = re.findall(pattern, query)
+    # Find all input.DataFrame references - support both formats
+    # Pattern 1: input.DataFrame({'ColumnName'}) - with quotes and braces
+    pattern1 = r"input\\.DataFrame\\(\\{['\"]([^'\"]+)['\"]\\}\\)"
+    matches1 = re.findall(pattern1, query)
+
+    # Pattern 2: input.DataFrame(ColumnName) - without quotes and braces
+    pattern2 = r"input\\.DataFrame\\(([A-Za-z_][A-Za-z0-9_]*)\\)"
+    matches2 = re.findall(pattern2, query)
+
+    # Combine matches from both patterns
+    matches = matches1 + matches2
+
+    print(f"Pattern 1 matches: {matches1}")
+    print(f"Pattern 2 matches: {matches2}")
+    print(f"Combined column references: {matches}")
 
     if not matches:
         # No input references, return original query
@@ -159,7 +171,7 @@ def process_sql_with_input_data(query, input_df):
     return processed_queries
 
 # Process the SQL query
-raw_query = """${config.sqlQuery}"""
+raw_query = \"\"\"${config.sqlQuery}\"\"\"
 processed_queries = process_sql_with_input_data(raw_query, ${inputName})
 
 # Execute queries and collect results
