@@ -116,6 +116,10 @@ def process_sql_with_input_data(query, input_df):
     print(f"Input DataFrame shape: {input_df.shape if input_df is not None else 'None'}")
     print(f"Input DataFrame columns: {list(input_df.columns) if input_df is not None else 'None'}")
 
+    if "input.DataFrame" not in query:
+        print("No input.DataFrame placeholders found. Returning original query.")
+        return [query]
+
     if input_df is not None and not input_df.empty:
         print(f"Input DataFrame head (first 3 rows):")
         print(input_df.head(3).to_string())
