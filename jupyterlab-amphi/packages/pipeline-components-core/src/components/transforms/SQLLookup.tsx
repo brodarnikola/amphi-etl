@@ -97,7 +97,7 @@ export class SQLLookup extends BaseCoreComponent {
 ${connectionName} = sqlalchemy.create_engine(
     f"postgresql://${config.username}:${config.password}@${config.host}:${config.port}/${config.databaseName}"
 )`;
-  }
+  } 
 
   public generateComponentCode({ config, inputName, outputName }): string {
     const connParamsName = `${outputName}_engine`;
@@ -111,27 +111,38 @@ def process_sql_with_input_data(query, input_df):
     """
     import re
 
+    print(f"=== SQL LOOKUP DEBUG INFO ===")
+    print(f"Original query: {query}")
+    print(f"Input DataFrame shape: {input_df.shape if input_df is not None else 'None'}")
+    print(f"Input DataFrame columns: {list(input_df.columns) if input_df is not None else 'None'}")
+
+    if input_df is not None and not input_df.empty:
+        print(f"Input DataFrame head (first 3 rows):")
+        print(input_df.head(3).to_string())
+
     if input_df is None or input_df.empty:
         print("Warning: No input data available")
         return [query]
 
-    # Find all input.DataFrame references - support both formats
-    # Pattern 1: input.DataFrame({'ColumnName'}) - with quotes and braces
-    pattern1 = r"input\.DataFrame\(\{\'([^\']+)\'\}\)"
-    matches1 = re.findall(pattern1, query)
+    pattern = r"input\.DataFrame\(([^)]+)\)"
+    matches = re.findall(pattern, query)
 
-    # Pattern 2: input.DataFrame(ColumnName) - without quotes and braces
-    pattern2 = r"input\.DataFrame\(([A-Za-z_][A-Za-z0-9_]*)\)"
-    matches2 = re.findall(pattern2, query)
+    print(f"Raw matches 2: {matches}")
 
-    # Combine matches from both patterns
-    matches = matches1 + matches2
+    # Extract just the column names from tuples if needed
+    if matches and isinstance(matches[0], tuple):
+        matches = [match[0].strip('(') for match in matches]
 
-    print(f"Pattern 1 matches: {matches1}")
-    print(f"Pattern 2 matches: {matches2}")
-    print(f"Combined column references: {matches}")
+    print(f"Raw matches 3: {matches}")
 
-    if not matches:
+    # Clean up matches - remove parentheses, quotes, and whitespace
+    cleaned_matches = []
+    for match in matches:
+        clean_match = match.strip().strip('(').strip('"').strip("'")
+        cleaned_matches.append(clean_match)
+    print(f"Cleaned matches: {cleaned_matches}")
+
+    if not cleaned_matches:
         # No input references, return original query
         return [query]
 
@@ -141,29 +152,31 @@ def process_sql_with_input_data(query, input_df):
     for index, row in input_df.iterrows():
         processed_query = query
 
+        print(f"processed_query: {processed_query}")
+        print(f"index: {index}")
+        print(f"row: {row}")
+
+        print(f"row values: {row.values}")  # Shows all values as an array
+        print(f"row values as list: {row.tolist()}")  # Converts to a list
+
         for column_name in matches:
-            if column_name in input_df.columns:
-                value = row[column_name]
-
-                # Handle different data types for SQL
-                if pd.isna(value):
-                    sql_value = "NULL"
-                elif isinstance(value, str):
-                    # Escape single quotes in strings
-                    escaped_value = str(value).replace("'", "''")
-                    sql_value = f"'{escaped_value}'"
-                elif isinstance(value, (int, float)):
-                    sql_value = str(value)
-                else:
-                    # Convert to string and escape
-                    escaped_value = str(value).replace("'", "''")
-                    sql_value = f"'{escaped_value}'"
-
-                # Replace the placeholder with the actual value
-                placeholder = f"input.DataFrame({{'{column_name}'}})"
-                processed_query = processed_query.replace(placeholder, sql_value)
-            else:
-                print(f"Warning: Column '{column_name}' not found in input data")
+          column_name = column_name.strip()  # Remove extra whitespace
+          if column_name in input_df.columns:
+              value = row[column_name]
+              # Handle SQL escaping and NULLs
+              if pd.isna(value):
+                  sql_value = "NULL"
+              elif isinstance(value, str):
+                  escaped_value = value.replace("'", "''")
+                  sql_value = f"'{escaped_value}'"
+              else:
+                  sql_value = str(value)
+              
+              # Replace input.DataFrame(ColumnName) with the actual value
+              placeholder = f"input.DataFrame({column_name})"
+              processed_query = processed_query.replace(placeholder, sql_value)
+          else:
+              print(f"Warning: Column '{column_name}' not found in input data")
 
         processed_queries.append(processed_query)
 
