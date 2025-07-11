@@ -110,41 +110,41 @@ def process_sql_with_input_data(query, input_df):
     Replace input.DataFrame({'ColumnName'}) references with actual values from the input DataFrame
     """
 
-    #print(f"=== SQL LOOKUP DEBUG INFO ===")
-    #print(f"Original query: {query}")
-    #print(f"Input dataframe data are 1: {input_df}")
-    #print(f"Input DataFrame shape: {input_df.shape if input_df is not None else 'None'}")
-    #print(f"Input DataFrame columns: {list(input_df.columns) if input_df is not None else 'None'}")
+    print(f"=== SQL LOOKUP DEBUG INFO ===")
+    print(f"Original query: {query}")
+    print(f"Input dataframe data are 1: {input_df}")
+    print(f"Input DataFrame shape: {input_df.shape if input_df is not None else 'None'}")
+    print(f"Input DataFrame columns: {list(input_df.columns) if input_df is not None else 'None'}")
 
     if "input.DataFrame" not in query:
-        #print("No input.DataFrame placeholders found. Returning original query.")
+        print("No input.DataFrame placeholders found. Returning original query.")
         return [query]
 
-    #if input_df is not None and not input_df.empty:
-    #    print(f"Input DataFrame head (first 3 rows):")
-    #    print(input_df.head(3).to_string())
+    if input_df is not None and not input_df.empty:
+        print(f"Input DataFrame head (first 3 rows):")
+        print(input_df.head(3).to_string())
 
     if input_df is None or input_df.empty:
-        #print("Warning: No input data available")
+        print("Warning: No input data available")
         return [query]
 
     pattern = r"input\.DataFrame\(([^)]+)\)"
     matches = re.findall(pattern, query)
 
-    #print(f"Raw matches 2: {matches}")
+    print(f"Raw matches 2: {matches}")
 
     # Extract just the column names from tuples if needed
     if matches and isinstance(matches[0], tuple):
         matches = [match[0].strip('(') for match in matches]
 
-    #print(f"Raw matches 3: {matches}")
+    print(f"Raw matches 3: {matches}")
 
     # Clean up matches - remove parentheses, quotes, and whitespace
     cleaned_matches = []
     for match in matches:
         clean_match = match.strip().strip('(').strip('"').strip("'")
         cleaned_matches.append(clean_match)
-    #print(f"Cleaned matches: {cleaned_matches}")
+    print(f"Cleaned matches: {cleaned_matches}")
 
     if not cleaned_matches:
         # No input references, return original query
@@ -156,12 +156,12 @@ def process_sql_with_input_data(query, input_df):
     for index, row in input_df.iterrows():
         processed_query = query
 
-        #print(f"processed_query: {processed_query}")
-        #print(f"index: {index}")
-        #print(f"row: {row}")
+        print(f"processed_query: {processed_query}")
+        print(f"index: {index}")
+        print(f"row: {row}")
 
-        #print(f"row values: {row.values}")  # Shows all values as an array
-        #print(f"row values as list: {row.tolist()}")  # Converts to a list
+        print(f"row values: {row.values}")  # Shows all values as an array
+        print(f"row values as list: {row.tolist()}")  # Converts to a list
 
         for column_name in matches:
           column_name = column_name.strip()  # Remove extra whitespace
@@ -188,12 +188,6 @@ def process_sql_with_input_data(query, input_df):
 
 # Process the SQL query
 raw_query = """${config.sqlQuery}"""
-
-# check if the query starts with SELECT
-if(not raw_query.upper().startswith("SELECT")):
-    print("SQL query must start with SELECT statement.")
-    raise ValueError("SQL query must start with SELECT statement.")
-
 processed_queries = process_sql_with_input_data(raw_query, ${inputName})
 
 # Check if this is a lookup query (has placeholders)
@@ -205,12 +199,13 @@ all_results = []
 # Create a copy of input data for result building
 result_df = ${inputName}.copy()
 
+print(f"connection: ${connParamsName}")
 try:
     with ${connParamsName}.connect() as connection:
         if is_lookup_query:
             # For lookup queries: execute one query per row and merge results
             for i, query in enumerate(processed_queries):
-                #print(f"Executing query {i+1}/{len(processed_queries)}: {query}")
+                print(f"Executing query {i+1}/{len(processed_queries)}: {query}")
 
                 try:
                     query_result = pd.read_sql(query, connection)
@@ -218,11 +213,11 @@ try:
                         # Add row index to track which input row this result belongs to
                         query_result['_input_row_index'] = i
                         all_results.append(query_result)
-                        #print(f"Query {i+1} returned {len(query_result)} rows")
+                        print(f"Query {i+1} returned {len(query_result)} rows")
                     else:
                         print(f"Query {i+1} returned no rows")
                 except Exception as e:
-                    #print(f"Error executing query {i+1}: {str(e)}")
+                    print(f"Error executing query {i+1}: {str(e)}")
                     continue
                     
             # Combine all query results
@@ -241,16 +236,10 @@ try:
                         # For each column in query result, concatenate all values with "||" separator
                         for col in matching_results.columns:
                             if col != '_input_row_index':
-                                # Get all values for this column, filter out None/null values
+                                # Get all values for this column and concatenate with "||"
                                 values = matching_results[col].astype(str).tolist()
-                                # Filter out 'None', 'nan', 'null', empty strings
-                                filtered_values = [v for v in values if v not in ['None', 'nan', 'null', '', 'NaN']]
-                                
-                                if filtered_values:
-                                    concatenated_value = "||".join(filtered_values)
-                                    input_row[col] = concatenated_value
-                                else:
-                                    input_row[col] = None
+                                concatenated_value = "||".join(values)
+                                input_row[col] = concatenated_value
                     
                     final_rows.append(input_row)
                 
@@ -262,25 +251,21 @@ try:
         else:
             # For normal queries: execute once and merge with all input rows
             query = processed_queries[0]  # Should be only one query
-            #print(f"Executing normal query: {query}")
+            print(f"Executing normal query: {query}")
             
             try:
                 query_result = pd.read_sql(query, connection)
                 if not query_result.empty:
                     # For each column in query result, concatenate all values with "||" separator
                     for col in query_result.columns:
-                        # Get all values for this column, filter out None/null values
+                        # Get all values for this column and concatenate with "||"
                         values = query_result[col].astype(str).tolist()
-                        # Filter out 'None', 'nan', 'null', empty strings
-                        filtered_values = [v for v in values if v not in ['None', 'nan', 'null', '', 'NaN']]
+                        concatenated_value = "||".join(values)
                         
-                        if filtered_values:
-                            concatenated_value = "||".join(filtered_values)
-                            result_df[col] = concatenated_value
-                        else:
-                            result_df[col] = None
+                        # Add this concatenated value to all input rows
+                        result_df[col] = concatenated_value
                     
-                    #print(f"Normal query returned {len(query_result)} rows")
+                    print(f"Normal query returned {len(query_result)} rows")
                 else:
                     print("Normal query returned no rows")
             except Exception as e:
@@ -288,7 +273,7 @@ try:
             
             ${outputName} = result_df.convert_dtypes()
              
-    #print(f"Final result: {len(${outputName})} total rows")
+    print(f"Final result: {len(${outputName})} total rows")
 
 
 finally:
@@ -296,3 +281,7 @@ finally:
 `;
   }
 }
+
+// Also for normal query and for lookup, if there is some value "null" from database, please ignore this value inside FINAL Dataframe .. 
+
+// Currently displaying "NONE"
