@@ -12,8 +12,7 @@ export class PostgresOutput extends BaseCoreComponent {
       username: "",
       password: "",
       ifTableExists: "fail",
-      mode: "insert",
-      conflictColumns: ""
+      mode: "insert"
     };
     const form = {
       idPrefix: "component__form",
@@ -88,18 +87,8 @@ export class PostgresOutput extends BaseCoreComponent {
           label: "Mode",
           id: "mode",
           options: [
-            { value: "insert", label: "INSERT" },
-            { value: "upsert", label: "UPSERT" }
+            { value: "insert", label: "INSERT" }
           ],
-          advanced: true
-        },
-        {
-          type: "input",
-          label: "Conflict Column(s)",
-          id: "conflictColumns",
-          placeholder: "Enter column name(s) for UPSERT conflict (comma-separated)",
-          tooltip: "Required for UPSERT mode. Specify the column(s) that define uniqueness constraints.",
-          //condition: { field: "mode", value: "upsert" },
           advanced: true
         },
         {
@@ -228,7 +217,6 @@ ${inputName} = ${inputName}[[${selectedColumns}]]
     }
 
     const ifExistsAction = config.ifTableExists;
-    const mode = config.mode || 'insert';
 
     const schemaParam = (config.schema && config.schema.toLowerCase() !== 'public')
       ? `,
@@ -237,86 +225,7 @@ ${inputName} = ${inputName}[[${selectedColumns}]]
 
     const connectionCode = this.generateDatabaseConnectionCode({ config, connectionName: uniqueEngineName });
 
-    // Handle different modes
-    if (mode === 'upsert') {
-      const conflictColumns = config.conflictColumns || '';
-      if (!conflictColumns.trim()) {
-        throw new Error('Conflict column(s) must be specified for UPSERT mode');
-      }
-
-      const conflictColumnsList = conflictColumns.split(',').map(col => col.trim()).filter(col => col);
-      const conflictColumnsStr = conflictColumnsList.map(col => `"${col}"`).join(', ');
-
-      return `
-${connectionCode}
-${mappingsCode}${columnsCode}
-# UPSERT DataFrame to Postgres using pandas with conflict resolution
-try:
-    # First, try to create the table if it doesn't exist
-    if "${ifExistsAction}" == "replace":
-        ${inputName}.to_sql(
-            name="${config.tableName.value}",
-            con=${uniqueEngineName},
-            if_exists="replace",
-            index=False${schemaParam}
-        )
-    else:
-        # Check if table exists
-        table_exists_query = """
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_schema = '${config.schema || 'public'}' 
-            AND table_name = '${config.tableName.value}'
-        )
-        """
-        table_exists = pd.read_sql(table_exists_query, ${uniqueEngineName}).iloc[0, 0]
-        
-        if not table_exists:
-            # Create table with initial data
-            ${inputName}.to_sql(
-                name="${config.tableName.value}",
-                con=${uniqueEngineName},
-                if_exists="fail",
-                index=False${schemaParam}
-            )
-        else:
-            # Perform UPSERT using PostgreSQL's ON CONFLICT
-            from sqlalchemy import text
-            
-            # Create temporary table
-            temp_table_name = "${config.tableName.value}_temp"
-            ${inputName}.to_sql(
-                name=temp_table_name,
-                con=${uniqueEngineName},
-                if_exists="replace",
-                index=False${schemaParam}
-            )
-            
-            # Get column names
-            columns = list(${inputName}.columns)
-            columns_str = ', '.join([f'"{col}"' for col in columns])
-            update_columns = ', '.join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col not in [${conflictColumnsStr}]])
-            
-            # Execute UPSERT
-            upsert_query = f"""
-            INSERT INTO "${config.schema || 'public'}"."${config.tableName.value}" ({columns_str})
-            SELECT {columns_str} FROM "${config.schema || 'public'}"."{temp_table_name}"
-            ON CONFLICT (${conflictColumnsStr})
-            DO UPDATE SET {update_columns}
-            """
-            
-            with ${uniqueEngineName}.begin() as conn:
-                conn.execute(text(upsert_query))
-                # Drop temporary table
-                conn.execute(text(f'DROP TABLE IF EXISTS "${config.schema || 'public'}"."{temp_table_name}"'))
-            
-            print(f"UPSERT completed for {len(${inputName})} rows into table '${config.tableName.value}'")
-finally:
-    ${uniqueEngineName}.dispose()
-`;
-    } else {
-      // Default INSERT mode
-      return `
+    return `
 ${connectionCode}
 ${mappingsCode}${columnsCode}
 # Write DataFrame to Postgres
@@ -330,6 +239,5 @@ try:
 finally:
     ${uniqueEngineName}.dispose()
 `;
-    }
   }
 }
