@@ -44,6 +44,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
     const defaultNameCounts = new Map<string, number>();
     const usedOpNames = new Set<string>();
     const nodeToOpName = new Map<string, string>();
+    const variableNames = new Map<string, string>();
 
     // Collect imports, dependencies, and functions
     for (const nodeId of nodesToTraverse) {
@@ -85,6 +86,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
       const componentType = component._type;
 
       let opName: string;
+      let variableName: string;
       
       const flow = PipelineService.filterPipeline(pipelineJson);
       const envSuffix = this.getEnvironmentSuffix(flow, componentService);
@@ -102,6 +104,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
           counter++;
         }
         opName = finalOpName + envSuffix; // Append environment suffix if needed
+        variableName = finalOpName;
       } else {
         // For default naming, apply numbering logic based on default name
         const defaultName = this.generateReadableName(node.type);
@@ -110,17 +113,20 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
         if (totalCount === 1) {
           // If there's only one instance with this default name, use base name
           opName = defaultName + envSuffix; // Append environment suffix if needed
+          variableName = defaultName;
         } else {
           // If there are multiple instances, number them starting from 1
           const currentCounter = (defaultNameCounters.get(defaultName) || 0) + 1;
           defaultNameCounters.set(defaultName, currentCounter);
           // Fixed: Keep the full name and add number before "Op"
           opName = defaultName.replace('Op', '') + currentCounter + 'Op' + envSuffix;
+          variableName = defaultName.replace('Op', '') + currentCounter + 'Op';
         }
       }
       
       usedOpNames.add(opName);
       nodeToOpName.set(nodeId, opName);
+      variableNames.set(nodeId, variableName);
 
       // Determine inputs and outputs based on component type
       let opInputs: string[] = [];
@@ -236,7 +242,8 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
       nodesMap,
       nodeDependencies,
       nodesToTraverse,
-      nodeToOpName // Pass the mapping of nodeId to opName
+      nodeToOpName, // Pass the mapping of nodeId to opName
+      variableNames // Pass the mapping
     );
 
     // Combine all parts
@@ -268,14 +275,15 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
     nodesMap: Map<string, Node>,
     nodeDependencies: Map<string, string[]>,
     nodesToTraverse: string[],
-    nodeToOpName: Map<string, string> // New parameter for node to op name mapping
+    nodeToOpName: Map<string, string>, // New parameter for node to op name mapping
+    variableNames: Map<string, string>
   ): string {
     const processedNodes = new Set<string>();
     const resultVar = new Map<string, string>();
 
     // Create result variable names based on the actual op names
     for (const nodeId of nodesToTraverse) {
-      const opName = nodeToOpName.get(nodeId);
+      const opName = variableNames.get(nodeId);
       if (!opName) continue;
       
       const rVar = opName.replace('Op', 'Result');
