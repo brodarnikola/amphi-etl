@@ -82,7 +82,8 @@ export class TransformInput extends PipelineComponent<ComponentItem>() {
                 return false;
             }
 
-            if (startNum >= endNum) {
+            //if (startNum >= endNum) {
+            if (startNum > endNum) {
                 setRangeError('Start number must be less than end number');
                 return false;
             }

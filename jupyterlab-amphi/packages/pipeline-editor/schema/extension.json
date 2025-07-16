@@ -20,7 +20,7 @@
       "type": "boolean",
       "title": "Enable Telemetry",
       "description": "Enable telemetry used to improve user experience and product performance.",
-      "default": true
+      "default": false
     },
     "defaultEngineBackend": {
       "type": "string",
