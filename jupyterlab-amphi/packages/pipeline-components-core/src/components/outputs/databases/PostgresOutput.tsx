@@ -223,6 +223,7 @@ ${connectionName} = sqlalchemy.create_engine(
       if not conflict_cols_str or not conflict_cols_str.strip():
           raise ValueError("Conflict columns must be specified for UPSERT operations")
       
+      # Converts "file_name,hash,time_created" → ['file_name', 'hash', 'time_created']
       conflict_cols = [col.strip() for col in conflict_cols_str.split(',') if col.strip()]
       
       # Get all column names from dataframe
@@ -235,8 +236,8 @@ ${connectionName} = sqlalchemy.create_engine(
           update_cols = [col for col in all_columns if col not in conflict_cols]
       
       # Create the INSERT statement with named parameters
-      columns_str = ', '.join(all_columns)
-      placeholders = ', '.join([f':{col}' for col in all_columns])
+      columns_str = ', '.join(all_columns)  # This is the full list of columns
+      placeholders = ', '.join([f':{col}' for col in all_columns]) # This is for VALUES --> creates named placeholders for each column
       
       # Create the ON CONFLICT clause
       conflict_cols_str = ', '.join(conflict_cols)
@@ -245,7 +246,7 @@ ${connectionName} = sqlalchemy.create_engine(
       update_assignments = []
       for col in update_cols:
           update_assignments.append(f"{col} = EXCLUDED.{col}")
-      update_clause = ', '.join(update_assignments)
+      update_clause = ', '.join(update_assignments)  # This is the SET clause for the update, for this PART --> DO UPDATE SET {update_clause}
       
       # Build the complete UPSERT query
       upsert_query = f"""

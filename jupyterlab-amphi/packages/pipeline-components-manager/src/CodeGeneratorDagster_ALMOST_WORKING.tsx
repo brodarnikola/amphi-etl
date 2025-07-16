@@ -16,7 +16,9 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
   ): string {
     console.log("Inside generateDagsterCode method");
 
+    console.log("pipelineJson 1:", pipelineJson);
     const flow = PipelineService.filterPipeline(pipelineJson);
+    console.log("flow 1:", flow);
     const { nodesToTraverse, nodesMap, nodeDependencies } = this.computeNodesToTraverse(
       flow,
       'none',
@@ -26,6 +28,12 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
     console.log("Nodes to traverse:", nodesToTraverse);
     console.log("flow 2:", flow);
     console.log("componentService:", componentService);
+
+    // Check for environment components and get suffix
+    const envSuffix = this.getEnvironmentSuffix(flow, componentService);
+
+
+    console.log("envSuffix:", envSuffix);
 
     const dagsterImports = [
       'import dagster',
@@ -86,36 +94,47 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
 
       let opName: string;
       
-      const flow = PipelineService.filterPipeline(pipelineJson);
-      const envSuffix = this.getEnvironmentSuffix(flow, componentService);
-
       // Check if this component has a custom title
       if (config.customTitle && config.customTitle.trim() !== '') {
         // For custom titles, use the custom title directly (no numbering)
-        opName = this.generateReadableName(config.customTitle);
+        opName = this.generateReadableName(config.customTitle, envSuffix);
         
+        console.log(`Custom title for node ${nodeId}: ${opName}`);
         // Ensure uniqueness for custom titles
         let counter = 1;
         let finalOpName = opName;
+
+        console.log(`Has final Op Name: ${usedOpNames.has(finalOpName)}`);
         while (usedOpNames.has(finalOpName)) {
-          finalOpName = opName.replace('Op', '') + counter + 'Op';
+          const baseOpName = opName.replace(/Op(_\w+)?$/, '');
+
+          console.log(`baseOpName: ${baseOpName}`);
+          const suffix = envSuffix ? `_${envSuffix}` : '';
+
+          console.log(`suffix: ${suffix}`);
+          finalOpName = baseOpName + counter + 'Op' + suffix;
+          console.log(`finalOpName: ${finalOpName}`);
           counter++;
         }
-        opName = finalOpName + envSuffix; // Append environment suffix if needed
+        opName = finalOpName;
       } else {
         // For default naming, apply numbering logic based on default name
-        const defaultName = this.generateReadableName(node.type);
+        const defaultName = this.generateReadableName(node.type, envSuffix);
         const totalCount = defaultNameCounts.get(defaultName) || 1;
         
+        console.log(`defaultName ${defaultName}`);
+        console.log(`totalCount ${totalCount}`);
         if (totalCount === 1) {
           // If there's only one instance with this default name, use base name
-          opName = defaultName + envSuffix; // Append environment suffix if needed
+          opName = defaultName;
         } else {
           // If there are multiple instances, number them starting from 1
           const currentCounter = (defaultNameCounters.get(defaultName) || 0) + 1;
           defaultNameCounters.set(defaultName, currentCounter);
-          // Fixed: Keep the full name and add number before "Op"
-          opName = defaultName.replace('Op', '') + currentCounter + 'Op' + envSuffix;
+          // Fixed: Keep the full name and add number before "Op" but after environment suffix
+          const baseOpName = defaultName.replace(/Op(_\w+)?$/, '');
+          const suffix = envSuffix ? `_${envSuffix}` : '';
+          opName = baseOpName + currentCounter + 'Op' + suffix;
         }
       }
       
@@ -278,7 +297,7 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
       const opName = nodeToOpName.get(nodeId);
       if (!opName) continue;
       
-      const rVar = opName.replace('Op', 'Result');
+      const rVar = opName.replace(/Op(_\w+)?$/, 'Result$1');
       resultVar.set(nodeId, rVar);
     }
 
@@ -326,7 +345,7 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
     return jobCode;
   }
 
-  static generateReadableName(rawName: string): string {
+  static generateReadableName(rawName: string, envSuffix: string = ''): string {
     // Clean the name: remove special characters, replace spaces with underscores
     const cleanName = rawName
       .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
@@ -349,7 +368,9 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
       ? camelCaseName 
       : 'op' + camelCaseName.charAt(0).toUpperCase() + camelCaseName.slice(1);
 
-    return validName + 'Op';
+    // Add environment suffix if available
+    const suffix = envSuffix ? `_${envSuffix}` : '';
+    return validName + 'Op' + suffix;
   }
 
   static getEnvironmentSuffix(flow: Flow, componentService: any): string {
@@ -358,24 +379,33 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
 
     // Check for environment components
     flow.nodes.forEach(node => {
+      const component = componentService.getComponent(node.type);
+      const componentType = component._type; 
 
       if( node.type === "envFile" ) {
+        console.log(`Checking node: ${node.id}, type: ${node.type}, componentType: ${componentType}`);
+        console.log(`Found envFile component 11: ${node.id} `);
         envFileNode = node;
       } 
       if( node.type === "envVariables" ) {
+        console.log(`Found envVariables component 11: ${node.id}, type: ${node.type}, componentType: ${componentType}`);
+        console.log(`Found envFile component 11: ${node}`);
         envVariablesNode = node;
       }   
     });
 
     if(envFileNode) {
-      return "_" + envFileNode.data.variables[0].value || '';
+      console.log(`Found envFile component 22: ${envFileNode}`); 
+      console.log(envFileNode)
+      return envFileNode.data.variables[0].value || '';
+      //return envFileNode.data.variable.variables[0].default || '';
     }
     else if(envVariablesNode) {
-      return  "_" + envVariablesNode.data.variables[0].value || "_" + envVariablesNode.data.variables[0].default || '';
+      console.log(`Found envVariables component 44: ${envFileNode}`); 
+      console.log(`Found envVariables component 55: ${envVariablesNode.id}, type: ${envVariablesNode.type}`);
+      return envVariablesNode.data.variables[0].value || envVariablesNode.data.variables[0].default || '';
     } 
 
     return '';
   }
-
-
 }

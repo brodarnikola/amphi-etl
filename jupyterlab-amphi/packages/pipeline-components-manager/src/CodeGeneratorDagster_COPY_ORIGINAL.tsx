@@ -23,10 +23,6 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
       componentService
     );
 
-    console.log("Nodes to traverse:", nodesToTraverse);
-    console.log("flow 2:", flow);
-    console.log("componentService:", componentService);
-
     const dagsterImports = [
       'import dagster',
       'from dagster import op, job, Out, In, Nothing'
@@ -86,9 +82,6 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
 
       let opName: string;
       
-      const flow = PipelineService.filterPipeline(pipelineJson);
-      const envSuffix = this.getEnvironmentSuffix(flow, componentService);
-
       // Check if this component has a custom title
       if (config.customTitle && config.customTitle.trim() !== '') {
         // For custom titles, use the custom title directly (no numbering)
@@ -101,7 +94,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
           finalOpName = opName.replace('Op', '') + counter + 'Op';
           counter++;
         }
-        opName = finalOpName + envSuffix; // Append environment suffix if needed
+        opName = finalOpName;
       } else {
         // For default naming, apply numbering logic based on default name
         const defaultName = this.generateReadableName(node.type);
@@ -109,13 +102,13 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
         
         if (totalCount === 1) {
           // If there's only one instance with this default name, use base name
-          opName = defaultName + envSuffix; // Append environment suffix if needed
+          opName = defaultName;
         } else {
           // If there are multiple instances, number them starting from 1
           const currentCounter = (defaultNameCounters.get(defaultName) || 0) + 1;
           defaultNameCounters.set(defaultName, currentCounter);
           // Fixed: Keep the full name and add number before "Op"
-          opName = defaultName.replace('Op', '') + currentCounter + 'Op' + envSuffix;
+          opName = defaultName.replace('Op', '') + currentCounter + 'Op';
         }
       }
       
@@ -351,31 +344,4 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
 
     return validName + 'Op';
   }
-
-  static getEnvironmentSuffix(flow: Flow, componentService: any): string {
-    let envFileNode = null;
-    let envVariablesNode = null;
-
-    // Check for environment components
-    flow.nodes.forEach(node => {
-
-      if( node.type === "envFile" ) {
-        envFileNode = node;
-      } 
-      if( node.type === "envVariables" ) {
-        envVariablesNode = node;
-      }   
-    });
-
-    if(envFileNode) {
-      return "_" + envFileNode.data.variables[0].value || '';
-    }
-    else if(envVariablesNode) {
-      return  "_" + envVariablesNode.data.variables[0].value || "_" + envVariablesNode.data.variables[0].default || '';
-    } 
-
-    return '';
-  }
-
-
 }
