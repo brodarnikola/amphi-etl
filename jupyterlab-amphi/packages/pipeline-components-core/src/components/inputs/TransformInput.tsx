@@ -332,6 +332,8 @@ export class TransformInput extends PipelineComponent<ComponentItem>() {
 
         let rangeProcessingCode = `
 # Extract dictionary from input
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
 ${outputName}_dict = ${inputName}['json_data'].iloc[0]
 
 print(f"Total keys in input: {len(${outputName}_dict)}")

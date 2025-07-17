@@ -7,7 +7,7 @@ import { ComponentManager } from "@amphi/pipeline-components-manager";
 
 // Import allow to add the component to the palette
 import {
-  Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, Filter, RestInput,
+  Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, TransformToTable, Filter, RestInput,
   SplitColumn, Deduplicate, ExpandList, Sample, Sort, RenameColumns, TypeConverter, Extract, GoogleSheetsInput, GoogleSheetsOutput, FilterColumns, Join, SQLLookup, TransformInput,
   ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, ClickhouseOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
   EnvVariables, EnvFile, Transpose, Unite, Pivot, Annotation, ODBCInput, PdfTablesInput, Summary, LocalFileInput, FlattenJSON,
@@ -16,7 +16,7 @@ import {
 } from './components';
 
 // Export allow the component to be used as a base component in different packages
-export { Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, Filter, RestInput,
+export { Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, TransformToTable, Filter, RestInput,
   SplitColumn, Deduplicate, ExpandList, Sample, Sort, RenameColumns, TypeConverter, Extract, GoogleSheetsInput, GoogleSheetsOutput, FilterColumns, Join, SQLLookup, TransformInput, 
   ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, ClickhouseOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
   EnvVariables, EnvFile, Transpose, Unite, Pivot, Annotation, ODBCInput, PdfTablesInput, Summary, LocalFileInput, FlattenJSON,
@@ -80,6 +80,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     componentService.addComponent(DataCleansing.getInstance());
     componentService.addComponent(Sample.getInstance());
     componentService.addComponent(CustomTransformations.getInstance());
+    componentService.addComponent(TransformToTable.getInstance());
     componentService.addComponent(GenerateIDColumn.getInstance());
     componentService.addComponent(Summary.getInstance());
     componentService.addComponent(FrequencyAnalysis.getInstance());

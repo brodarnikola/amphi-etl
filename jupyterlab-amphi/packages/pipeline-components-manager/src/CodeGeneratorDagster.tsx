@@ -7,6 +7,7 @@ import {
 } from './PipelineService';
 import { BaseCodeGenerator, NodeObject } from './BaseCodeGenerator';
 
+
 export class CodeGeneratorDagster extends BaseCodeGenerator {
   static generateDagsterCode(
     pipelineJson: string,
@@ -89,7 +90,9 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
       let variableName: string;
       
       const flow = PipelineService.filterPipeline(pipelineJson);
-      const envSuffix = this.getEnvironmentSuffix(flow, componentService);
+      const envSuffix = this.getEnvironmentSuffix(flow);
+
+      console.log(`envSuffix: ${envSuffix}`);
 
       // Check if this component has a custom title
       if (config.customTitle && config.customTitle.trim() !== '') {
@@ -360,7 +363,7 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
     return validName + 'Op';
   }
 
-  static getEnvironmentSuffix(flow: Flow, componentService: any): string {
+  static getEnvironmentSuffix(flow: Flow): string {
     let envFileNode = null;
     let envVariablesNode = null;
 
@@ -375,12 +378,26 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
       }   
     });
 
-    if(envFileNode) {
-      return "_" + envFileNode.data.variables[0].value || '';
+    let variableName = '';
+    if(envFileNode) { 
+      for(const variable of envFileNode.data.variables) {
+        if( variable.name === "OP_SUFFIX" ) {
+          variableName = "_" + variable.value || '';
+          break;
+        }
+      }
+      return variableName;  
     }
-    else if(envVariablesNode) {
-      return  "_" + envVariablesNode.data.variables[0].value || "_" + envVariablesNode.data.variables[0].default || '';
-    } 
+
+    if(envVariablesNode) { 
+      for(const variable of envVariablesNode.data.variables) {
+        if( variable.name === "OP_SUFFIX" ) {
+          variableName = "_" + variable.value || "_" + variable.default || '';
+          break;
+        }
+      }
+      return variableName;  
+    }
 
     return '';
   }

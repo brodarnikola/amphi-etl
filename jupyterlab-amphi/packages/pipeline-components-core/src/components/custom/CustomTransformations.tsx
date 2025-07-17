@@ -90,12 +90,7 @@ export class CustomTransformations extends BaseCoreComponent {
 
   public generateComponentCode({ config, inputName, outputName }): string {
     // We only remove import lines from config.code, as config.imports is backward-compat
-
-    console.log("PYTHON TRANSFORMS: Generating component code for SQL Lookup");
-    console.log("PYTHON TRANSFORMS: config:", config);
-    console.log("PYTHON TRANSFORMS: Input Name:", inputName);
-    console.log("PYTHON TRANSFORMS: Output Name:", outputName);
-
+ 
     let userCode = (config.code || '')
       .split('\n')
       .filter(line => {

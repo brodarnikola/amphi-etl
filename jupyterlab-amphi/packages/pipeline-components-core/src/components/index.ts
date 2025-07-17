@@ -29,6 +29,7 @@ export { ODBCInput } from './inputs/databases/ODBCInput';
 export { Filter } from './transforms/Filter';
 export { Aggregate } from './transforms/Aggregate';
 export { CustomTransformations } from './custom/CustomTransformations';
+export { TransformToTable } from './custom/TransformToTable';
 export { SplitColumn } from './transforms/SplitColumn';
 export { Deduplicate } from './transforms/Deduplicate';
 export { ExpandList } from './transforms/JSON/ExpandList';
