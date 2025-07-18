@@ -63,7 +63,7 @@ export class TransformToTable extends BaseCoreComponent {
     console.log("KEY VALUE TRANSFORMS: Generating component code for KEY VALUE");
     console.log("KEY VALUE TRANSFORMS: config:", config);
     console.log("KEY VALUE TRANSFORMS: Input Name:", inputName);
-    console.log("KEY VALUE TRANSFORMS: Output Name:", outputName);
+    console.log("KEY VALUE TRANSFORMS: Output Name:", outputName); 
 
     let snippetCode = `pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)

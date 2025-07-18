@@ -116,18 +116,6 @@ export class PostgresOutput extends BaseCoreComponent {
           //   value: "upsert"
           // },
           advanced: true
-        }, 
-        {
-          type: "input",
-          label: "Where Statement",
-          id: "whereStatement",
-          placeholder: "Enter where statement or leave it blank",
-          tooltip: "Enter where statement to include in UPSERT query or leave it blank ( not mandatory this where ).",
-          // conditionalRendering: {
-          //   field: "mode",
-          //   value: "upsert"
-          // },
-          advanced: true
         },
         {
           type: "dataMapping",
@@ -221,79 +209,70 @@ ${connectionName} = sqlalchemy.create_engine(
     // Parse conflict columns from comma-separated string
     const conflictColumnsStr = config.conflictColumns || '';
     const updateColumnsStr = config.updateColumns || '';
-    const whereStatementStr = config.whereStatement || '';
     
     return `
   # UPSERT operation using raw SQL
-  def upsert_dataframe(df, engine, table_name, conflict_cols_str, update_cols_str=None, where_statement=None):
-    """
-    Perform UPSERT operation on PostgreSQL table
-    """
-    if df.empty:
-        return
-        
-    # Parse conflict columns from string
-    if not conflict_cols_str or not conflict_cols_str.strip():
-        raise ValueError("Conflict columns must be specified for UPSERT operations")
-        
-    # Converts "file_name,hash,time_created" → ['file_name', 'hash', 'time_created']
-    conflict_cols = [col.strip() for col in conflict_cols_str.split(',') if col.strip()]
-        
-    # Get all column names from dataframe
-    all_columns = list(df.columns)
-        
-    # Parse update columns or use all columns except conflict columns
-    if update_cols_str and update_cols_str.strip():
-        update_cols = [col.strip() for col in update_cols_str.split(',') if col.strip()]
-    else:
-        update_cols = [col for col in all_columns if col not in conflict_cols]
-        
-    # Create the INSERT statement with named parameters
-    columns_str = ', '.join(all_columns)  # This is the full list of columns
-    placeholders = ', '.join([f':{col}' for col in all_columns]) # This is for VALUES --> creates named placeholders for each column
-        
-    # Create the ON CONFLICT clause
-    conflict_cols_str = ', '.join(conflict_cols)
-        
-    # Create the DO UPDATE clause
-    update_assignments = []
-    for col in update_cols:
-        update_assignments.append(f"{col} = EXCLUDED.{col}")
-    update_clause = ', '.join(update_assignments)  # This is the SET clause for the update, for this PART --> DO UPDATE SET {update_clause}
-        
-    # Add WHERE clause if provided
-    where_clause = ""
-    if where_statement and where_statement.strip():
-        where_clause = f" WHERE {where_statement.strip()}"
-        
-    # Build the complete UPSERT query
-    upsert_query = f"""
-    INSERT INTO {table_name} ({columns_str})
-    VALUES ({placeholders})
-    ON CONFLICT ({conflict_cols_str})
-    DO UPDATE SET {update_clause}
-    {where_clause}
-    """
-        
-    # Execute the UPSERT for each row using named parameters
-    with engine.begin() as conn:
-        for _, row in df.iterrows():
-            # Create a dictionary of column names to values
-            row_dict = {col: row[col] for col in all_columns}
-            conn.execute(sqlalchemy.text(upsert_query), row_dict)
+  def upsert_dataframe(df, engine, table_name, conflict_cols_str, update_cols_str=None):
+      """
+      Perform UPSERT operation on PostgreSQL table
+      """
+      if df.empty:
+          return
+      
+      # Parse conflict columns from string
+      if not conflict_cols_str or not conflict_cols_str.strip():
+          raise ValueError("Conflict columns must be specified for UPSERT operations")
+      
+      # Converts "file_name,hash,time_created" → ['file_name', 'hash', 'time_created']
+      conflict_cols = [col.strip() for col in conflict_cols_str.split(',') if col.strip()]
+      
+      # Get all column names from dataframe
+      all_columns = list(df.columns)
+      
+      # Parse update columns or use all columns except conflict columns
+      if update_cols_str and update_cols_str.strip():
+          update_cols = [col.strip() for col in update_cols_str.split(',') if col.strip()]
+      else:
+          update_cols = [col for col in all_columns if col not in conflict_cols]
+      
+      # Create the INSERT statement with named parameters
+      columns_str = ', '.join(all_columns)  # This is the full list of columns
+      placeholders = ', '.join([f':{col}' for col in all_columns]) # This is for VALUES --> creates named placeholders for each column
+      
+      # Create the ON CONFLICT clause
+      conflict_cols_str = ', '.join(conflict_cols)
+      
+      # Create the DO UPDATE clause
+      update_assignments = []
+      for col in update_cols:
+          update_assignments.append(f"{col} = EXCLUDED.{col}")
+      update_clause = ', '.join(update_assignments)  # This is the SET clause for the update, for this PART --> DO UPDATE SET {update_clause}
+      
+      # Build the complete UPSERT query
+      upsert_query = f"""
+      INSERT INTO {table_name} ({columns_str})
+      VALUES ({placeholders})
+      ON CONFLICT ({conflict_cols_str})
+      DO UPDATE SET {update_clause}
+      """
+      
+      # Execute the UPSERT for each row using named parameters
+      with engine.begin() as conn:
+          for _, row in df.iterrows():
+              # Create a dictionary of column names to values
+              row_dict = {col: row[col] for col in all_columns}
+              conn.execute(sqlalchemy.text(upsert_query), row_dict)
 
   # Perform UPSERT operation
   conflict_columns = "${conflictColumnsStr}"
   update_columns = "${updateColumnsStr}"
-  where_statement = "${whereStatementStr}"
 
   upsert_dataframe(
       ${inputName},
       ${uniqueEngineName},
       "${tableName}",
       conflict_columns,
-      update_columns if update_columns else None,
-      where_statement if where_statement else None
+      update_columns if update_columns else None
   )
   `;
   }
