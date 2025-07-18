@@ -1,15 +1,5 @@
 import { codeIcon } from '../../icons';
-import { BaseCoreComponent } from '../BaseCoreComponent'; 
-export interface Flow {
-  nodes: Node[]; 
-}
-
-export interface Node {
-  id: string;
-  type: string;
-  data: any;
-  [key: string]: any; // To include other properties with unknown names
-} 
+import { BaseCoreComponent } from '../BaseCoreComponent';
 
 export class TransformToTable extends BaseCoreComponent {
   constructor() {
@@ -45,7 +35,6 @@ export class TransformToTable extends BaseCoreComponent {
     // Always include 'import pandas as pd'
     imports.push("import pandas as pd");
     imports.push("import numpy as np");
-    imports.push("import os");
 
     // Backward compatibility: if config.imports exists, parse it too
     if (config.imports) {
@@ -68,64 +57,19 @@ export class TransformToTable extends BaseCoreComponent {
     return imports;
   }
 
-  public getEnvironmentVariableSuffix(flow: Flow): string {
-    let envFileNode = null;
-    let envVariablesNode = null;
-
-    // Check for environment components
-    flow.nodes.forEach(node => {
-
-      if( node.type === "envFile" ) {
-        envFileNode = node;
-      } 
-      if( node.type === "envVariables" ) {
-        envVariablesNode = node;
-      }   
-    });
-
-    let variableName = '';
-    if(envFileNode) { 
-      for(const variable of envFileNode.data.variables) {
-        if( variable.name === "ENV_VARIABLE_CUST_CODE" ) {
-          variableName = "_" + variable.value || '';
-          break;
-        }
-      }
-      return variableName;  
-    }
-
-    if(envVariablesNode) { 
-      for(const variable of envVariablesNode.data.variables) {
-        if( variable.name === "ENV_VARIABLE_CUST_CODE" ) {
-          variableName = "_" + variable.value || "_" + variable.default || '';
-          break;
-        }
-      }
-      return variableName;  
-    }
-
-    return '';
-  }
-
   public generateComponentCode({ config, inputName, outputName }): string {
     // We only remove import lines from config.code, as config.imports is backward-compat
 
     console.log("KEY VALUE TRANSFORMS: Generating component code for KEY VALUE");
     console.log("KEY VALUE TRANSFORMS: config:", config);
     console.log("KEY VALUE TRANSFORMS: Input Name:", inputName);
-    console.log("KEY VALUE TRANSFORMS: Output Name:", outputName);
- 
-    //const flow = PipelineService.filterPipeline(pipelineJson);
-    //const envSuffix = this.getEnvironmentVariableSuffix(flow);
+    console.log("KEY VALUE TRANSFORMS: Output Name:", outputName); 
 
     let snippetCode = `pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None) 
-
-# Read environment variable
-env_variable_cust_code = os.getenv('ENV_VARIABLE_CUST_CODE', 'default_value')
+pd.set_option('display.max_columns', None)
 
 def wide_transform(${inputName}):
-
+   
   df = ${inputName}.reset_index() 
   df.columns = ['cell', 'value'] 
   df['col_letter'] = df['cell'].str.extract(r'([A-Z]+)', expand=False) 
@@ -138,12 +82,6 @@ def wide_transform(${inputName}):
 
   output.index = [f"{idx}" for idx in output.index]
   output = output.where(pd.notna(output), np.nan)
- 
-  print(f"Transformed env_variable_cust_code: {env_variable_cust_code}")
-  
-  # Add CUST_CODE column with environment variable value
-  output['CUST_CODE'] = env_variable_cust_code    
-      
   return output
 
 output = wide_transform(${inputName})
@@ -157,7 +95,4 @@ output = wide_transform(${inputName})
 
     return `\n${snippetCode}`;
   }
-
-
-
 }

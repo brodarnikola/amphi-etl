@@ -98,7 +98,7 @@ export class PostgresOutput extends BaseCoreComponent {
           label: "Conflict Columns",
           id: "conflictColumns",
           placeholder: "Enter conflict columns (comma-separated): id,name,email",
-          tooltip: "Columns used in ON CONFLICT clause for UPSERT operations. Enter as comma-separated values.",
+          tooltip: "Unique index columns used in ON CONFLICT clause for UPSERT operations. Enter as comma-separated values.",
           // conditionalRendering: {
           //   field: "mode",
           //   value: "upsert"
