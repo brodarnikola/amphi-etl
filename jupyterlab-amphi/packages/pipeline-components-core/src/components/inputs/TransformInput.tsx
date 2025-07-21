@@ -324,7 +324,7 @@ export class TransformInput extends PipelineComponent<ComponentItem>() {
     }
 
     public provideImports({ config }): string[] {
-        return ["import pandas as pd", "import json"];
+        return ["import pandas as pd", "import json", "import numpy as np"];
     }
 
     public generateComponentCode({ config, inputName, outputName }): string {
@@ -396,8 +396,42 @@ ${outputName}_filtered = {
     if in_range(k, ${JSON.stringify(ranges)})
 }
 
+# Add missing columns with null values for each range
+for range_str in ${JSON.stringify(ranges)}:
+  if '-' not in range_str:
+      continue
+   
+  start, end = range_str.split('-')
+  if len(start) < 2 or len(end) < 2:
+      continue
+    
+  start_letter = start[0].upper()
+  end_letter = end[0].upper()
+  start_num = int(start[1:]) if start[1:].isdigit() else 0
+  end_num = int(end[1:]) if end[1:].isdigit() else 0
+    
+  start_ord = ord(start_letter)
+  end_ord = ord(end_letter)
+    
+  # For each letter in the range
+  for letter_ord in range(start_ord, end_ord + 1):
+    letter = chr(letter_ord)
+        
+    # Check if any key exists for this letter in the range
+    letter_exists = any(k.startswith(letter) for k in ${outputName}_filtered.keys())
+        
+    if not letter_exists:
+      # Add a null entry for this letter
+      null_key = f"{letter}{start_num}"
+      ${outputName}_filtered[null_key] = np.nan #.astype("string")
+      print(f"Added missing column: {null_key} with null value")
+
+# Convert all values to strings, use NaN for empty or NaN values
+#${outputName}_str = {k: str(v) if v is not None and not pd.isna(v) else np.nan for k, v in ${outputName}_filtered.items()}
+
 print(f"Filtered keys: {len(${outputName}_filtered)}")
 print(f"Filtered keys list: {list(${outputName}_filtered.keys())}")
+
 
 # Create DataFrame
 ${outputName} = pd.DataFrame(${outputName}_filtered, index=[0]).T

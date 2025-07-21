@@ -45,6 +45,7 @@ export class ClickhouseOutput extends BaseCoreComponent {
           type: "input",
           label: "Table Name",
           id: "tableName",
+          query: "SELECT name FROM system.tables WHERE database = '{databaseName}'",
           placeholder: "Enter table name"
         },
         {

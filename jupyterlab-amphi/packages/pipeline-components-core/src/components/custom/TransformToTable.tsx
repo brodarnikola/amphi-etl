@@ -137,8 +137,11 @@ def wide_transform(${inputName}):
   output = output[[col for col in output.columns if col.isalpha()]]
 
   output.index = [f"{idx}" for idx in output.index]
+  #print(f"Transformed output: {output}")
   output = output.where(pd.notna(output), np.nan)
- 
+  #print(f"Transformed output with NaN handling: {output}")  
+  #output = output.fillna(None)
+
   print(f"Transformed env_variable_cust_code: {env_variable_cust_code}")
   
   # Add CUST_CODE column with environment variable value
