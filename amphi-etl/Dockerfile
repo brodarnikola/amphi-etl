@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Switch to root user to install dependencies
-USER root
+USER root 
 
 # Create a work directory and set permissions
 RUN mkdir -p /home/amphi \
