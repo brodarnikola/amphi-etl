@@ -12,16 +12,16 @@ import {
   ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, ClickhouseOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
   EnvVariables, EnvFile, Transpose, Unite, Pivot, Annotation, ODBCInput, PdfTablesInput, Summary, LocalFileInput, FlattenJSON,
   DataCleansing, GenerateIDColumn, SqlServerInput, OracleInput, Connection, SnowflakeInput, FormulaRow, InlineInput, S3FileOutput, S3FileInput,
-  SnowflakeOutput, SqlServerOutput, OracleOutput, CustomInput, CustomOutput, FileUtils, FrequencyAnalysis, FormExample,UniqueKeyDetector,FileAction,DataframeList,DataframeDelete,HierarchyPath
+  SnowflakeOutput, SqlServerOutput, OracleOutput, CustomInput, CustomOutput, FileUtils, FrequencyAnalysis, FormExample,UniqueKeyDetector,FileAction,DataframeList,DataframeDelete,HierarchyPath,ExtractContextVars,UseContextVars
 } from './components';
 
-// Export allow the component to be used as a base component in different packages
+// Export allow the component to be used as a base component in different‚ packages
 export { Aggregate, Console, ExcelFileOutput, CsvFileInput, JsonFileInput, JsonFileOutput, ExcelFileInput, CsvFileOutput, CustomTransformations, TransformToTable, Filter, RestInput,
   SplitColumn, Deduplicate, ExpandList, Sample, Sort, RenameColumns, TypeConverter, Extract, GoogleSheetsInput, GoogleSheetsOutput, FilterColumns, Join, SQLLookup, TransformInput, 
   ParquetFileInput, ParquetFileOutput, PostgresInput, PostgresOutput, ClickhouseOutput, MySQLInput, MySQLOutput, XmlFileInput, XmlFileOutput, DateTimeConverter,
   EnvVariables, EnvFile, Transpose, Unite, Pivot, Annotation, ODBCInput, PdfTablesInput, Summary, LocalFileInput, FlattenJSON,
   DataCleansing, GenerateIDColumn, SqlServerInput, OracleInput, Connection, SnowflakeInput, FormulaRow, InlineInput, S3FileOutput, S3FileInput,
-  SnowflakeOutput, SqlServerOutput, OracleOutput, CustomInput, CustomOutput, FileUtils, FrequencyAnalysis, FormExample,UniqueKeyDetector,FileAction,DataframeList,DataframeDelete,HierarchyPath }
+  SnowflakeOutput, SqlServerOutput, OracleOutput, CustomInput, CustomOutput, FileUtils, FrequencyAnalysis, FormExample,UniqueKeyDetector,FileAction,DataframeList,DataframeDelete,HierarchyPath,ExtractContextVars,UseContextVars }
 
 const plugin: JupyterFrontEndPlugin<void> = {
   id: '@amphi/pipeline-components-core',
@@ -56,8 +56,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     componentService.addComponent(SnowflakeInput.getInstance())
     componentService.addComponent(ODBCInput.getInstance())
     componentService.addComponent(CustomInput.getInstance())
-    // componentService.addComponent(PyGWalker.getInstance())
-    // componentService.addComponent(Slider.getInstance())
 
     // Processors
     componentService.addComponent(RenameColumns.getInstance());
@@ -66,6 +64,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     componentService.addComponent(Sort.getInstance());
     componentService.addComponent(SplitColumn.getInstance());
     componentService.addComponent(Extract.getInstance());
+    componentService.addComponent(ExtractContextVars.getInstance());
+    componentService.addComponent(UseContextVars.getInstance());
     componentService.addComponent(ExpandList.getInstance());
     componentService.addComponent(FlattenJSON.getInstance());
     componentService.addComponent(FormulaRow.getInstance());
