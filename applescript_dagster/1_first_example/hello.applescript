@@ -1,0 +1,1 @@
+display dialog "Hello from AppleScript!" buttons {"OK"} default button "OK"

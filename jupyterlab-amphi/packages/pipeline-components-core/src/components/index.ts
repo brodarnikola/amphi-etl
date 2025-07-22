@@ -5,6 +5,7 @@ export { ParquetFileInput } from './inputs/files/ParquetFileInput';
 export { JsonFileInput } from './inputs/files/JsonFileInput';
 export { XmlFileInput } from './inputs/files/XmlFileInput';
 export { InlineInput } from './inputs/InlineInput';
+export { TransformInput } from './inputs/TransformInput';
 export { WordFileInput } from './inputs/files/WordFileInput';
 export { PdfTablesInput } from './inputs/files/PdfTablesInput';
 export { HtmlFileInput } from './inputs/files/HtmlFileInput';
@@ -28,6 +29,7 @@ export { ODBCInput } from './inputs/databases/ODBCInput';
 export { Filter } from './transforms/Filter';
 export { Aggregate } from './transforms/Aggregate';
 export { CustomTransformations } from './custom/CustomTransformations';
+export { TransformToTable } from './custom/TransformToTable';
 export { SplitColumn } from './transforms/SplitColumn';
 export { Deduplicate } from './transforms/Deduplicate';
 export { ExpandList } from './transforms/JSON/ExpandList';
@@ -38,6 +40,7 @@ export { Sort } from './transforms/Sort';
 export { RenameColumns } from './transforms/RenameColumns';
 export { TypeConverter } from './transforms/TypeConverter';
 export { Extract } from './transforms/Extract';
+export { ExtractContextVars } from './transforms/ExtractContextVars';
 export { FilterColumns } from './transforms/FilterColumns';
 export { Join } from './transforms/Join';
 export { Transpose } from './transforms/Transpose';
@@ -51,9 +54,10 @@ export { DateTimeConverter } from './transforms/DateTimeConverter';
 export { Summary } from './transforms/Summary';
 export { FrequencyAnalysis } from './transforms/FrequencyAnalysis';
 export { UniqueKeyDetector } from './transforms/UniqueKeyDetector';
-export { FileAction } from './transforms/files/FileAction';
+export { UseContextVars } from './transforms/UseContextVars';
+export { FileAction } from './transforms/files/FileAction'; 
 export { HierarchyPath } from './transforms/HierarchyPath';
-
+export { SQLLookup } from './transforms/SQLLookup'; 
 // Outputs
 export { ExcelFileOutput } from './outputs/files/ExcelFileOutput';
 export { CsvFileOutput } from './outputs/files/CsvFileOutput';
@@ -64,6 +68,7 @@ export { ParquetFileOutput } from './outputs/files/ParquetFileOutput';
 export { XmlFileOutput } from './outputs/files/XmlFileOutput';
 
 // Outputs Database
+export { ClickhouseOutput } from './outputs/databases/ClickhouseOutput';
 export { PostgresOutput } from './outputs/databases/PostgresOutput';
 export { MySQLOutput } from './outputs/databases/MySQLOutput';
 export { SnowflakeOutput } from './outputs/databases/SnowflakeOutput';

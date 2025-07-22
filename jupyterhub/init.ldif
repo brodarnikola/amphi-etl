@@ -1,0 +1,14 @@
+# Create an LDIF file (e.g., `init.ldif`)
+dn: dc=example,dc=com
+objectClass: dcObject
+objectClass: organization
+o: Example Organization
+dc: example
+
+dn: cn=admin,dc=example,dc=com
+objectClass: organizationalRole
+cn: admin
+
+dn: ou=users,dc=example,dc=com
+objectClass: organizationalUnit
+ou: users

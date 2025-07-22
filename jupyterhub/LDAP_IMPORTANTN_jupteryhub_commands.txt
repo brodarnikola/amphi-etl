@@ -1,0 +1,54 @@
+# Generate an admin password hash
+slappasswd
+# (Save the output, e.g., `{SSHA}hashed_password`)
+
+
+How to setup LDAP with Jupteryhub ?
+# Install OpenLDAP 
+1) brew install openldap
+
+After that we can use docker container to run openldap server
+2) docker run --name ldap-server -p 389:389 -e LDAP_ADMIN_PASSWORD=admin -d osixia/openldap    
+
+Add the users to LDAP:
+3) ldapadd -x -H ldap://localhost -D "cn=admin,dc=example,dc=org" -w admin -f users.ldif
+
+Verify the users exist or verify changes, things on this servers:
+4) ldapsearch -x -H ldap://localhost -b "dc=example,dc=org" -D "cn=admin,dc=example,dc=org" -w admin
+
+Position your self inside directory where you have the Jupteryhub file .. for example inside "Jupteryhub" directory
+5) cd Jupteryhub
+6) After that run the command below -> " jupteryhub -f jupteryhub_config.py "
+
+Delete a User (user1)
+ldapdelete -x -H ldap://localhost -D "cn=admin,dc=example,dc=org" -w admin "cn=user1,dc=example,dc=org"
+
+Create Hashed Password for user2 & Add Scopes
+slappasswd -s "password2"   
+# Copy the output (e.g., {SSHA}hashed_value)
+
+Now create an LDIF file (modify_users.ldif):
+# Change user2's password to hashed version
+dn: cn=user2,dc=example,dc=org
+changetype: modify
+replace: userPassword
+userPassword: {SSHA}hashed_value_from_above
+
+# Add scopes to user2
+dn: cn=user2,dc=example,dc=org
+changetype: modify
+add: description
+description: scope:read:servers
+description: scope:access:lab
+
+# Create user3 with scopes
+dn: cn=user3,dc=example,dc=org
+objectClass: inetOrgPerson
+cn: user3
+sn: User Three
+userPassword: password3
+description: scope:admin:servers
+description: scope:write:notebooks
+
+Apply the changes:
+ldapmodify -x -H ldap://localhost -D "cn=admin,dc=example,dc=org" -w admin -f modify_users.ldif

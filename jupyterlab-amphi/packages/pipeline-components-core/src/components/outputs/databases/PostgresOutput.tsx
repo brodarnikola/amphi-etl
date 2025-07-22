@@ -1,7 +1,6 @@
 import { postgresIcon } from '../../../icons';
 import { BaseCoreComponent } from '../../BaseCoreComponent';
 
-
 export class PostgresOutput extends BaseCoreComponent {
   constructor() {
     const defaultConfig = {
@@ -12,7 +11,9 @@ export class PostgresOutput extends BaseCoreComponent {
       username: "",
       password: "",
       ifTableExists: "fail",
-      mode: "insert"
+      mode: "insert",
+      conflictColumns: [], // New field for UPSERT conflict columns
+      updateColumns: []    // New field for UPSERT update columns
     };
     const form = {
       idPrefix: "component__form",
@@ -87,8 +88,45 @@ export class PostgresOutput extends BaseCoreComponent {
           label: "Mode",
           id: "mode",
           options: [
-            { value: "insert", label: "INSERT" }
+            { value: "insert", label: "INSERT" },
+            { value: "upsert", label: "UPSERT" }
           ],
+          advanced: true
+        },
+        {
+          type: "input",
+          label: "Conflict Columns",
+          id: "conflictColumns",
+          placeholder: "Enter conflict columns (comma-separated): id,name,email",
+          tooltip: "Unique index columns used in ON CONFLICT clause for UPSERT operations. Enter as comma-separated values.",
+          // conditionalRendering: {
+          //   field: "mode",
+          //   value: "upsert"
+          // },
+          advanced: true
+        },
+        {
+          type: "input",
+          label: "Update Columns",
+          id: "updateColumns",
+          placeholder: "Enter update columns (comma-separated) or leave empty for all",
+          tooltip: "Columns to update in DO UPDATE clause. If empty, all columns except conflict columns will be updated.",
+          // conditionalRendering: {
+          //   field: "mode",
+          //   value: "upsert"
+          // },
+          advanced: true
+        }, 
+        {
+          type: "input",
+          label: "Where Statement",
+          id: "whereStatement",
+          placeholder: "Enter where statement or leave it blank",
+          tooltip: "Enter where statement to include in UPSERT query or leave it blank ( not mandatory this where ).",
+          // conditionalRendering: {
+          //   field: "mode",
+          //   value: "upsert"
+          // },
           advanced: true
         },
         {
@@ -114,7 +152,7 @@ FROM
 WHERE 
     table_schema = '{{schema}}' AND
     table_name = '{{table}}';`,
-          pythonExtraction: `column_info = schema[[\"Field\", \"Type\"]]\nformatted_output = \", \".join([f\"{row['Field']} ({row['Type']})\" for _, row in column_info.iterrows()])\nprint(formatted_output)`,
+          pythonExtraction: `column_info = schema[["Field", "Type"]]\nformatted_output = ", ".join([f"{row['Field']} ({row['Type']})" for _, row in column_info.iterrows()])\nprint(formatted_output)`,
           typeOptions: [
             { value: "SMALLINT", label: "SMALLINT" },
             { value: "INTEGER", label: "INTEGER" },
@@ -152,7 +190,7 @@ WHERE
         }
       ],
     };
-    const description = "Use Postgres Output to insert data into a Postgres table by specifying a data mapping between the incoming data and the existing table schema."
+    const description = "Use Postgres Output to insert data into a Postgres table by specifying a data mapping between the incoming data and the existing table schema. Supports both INSERT and UPSERT operations."
 
     super("Postgres Output", "postgresOutput", description, "pandas_df_output", [], "outputs.Databases", postgresIcon, defaultConfig, form);
   }
@@ -174,6 +212,90 @@ ${connectionName} = sqlalchemy.create_engine(
   "postgresql://${config.username}:${config.password}@${config.host}:${config.port}/${config.databaseName}"
 )
 `;
+  }
+
+  private generateUpsertCode({ config, inputName, uniqueEngineName }): string {
+    const schemaPrefix = config.schema && config.schema.toLowerCase() !== 'public' ? `${config.schema}.` : '';
+    const tableName = `${schemaPrefix}${config.tableName.value}`;
+    
+    // Parse conflict columns from comma-separated string
+    const conflictColumnsStr = config.conflictColumns || '';
+    const updateColumnsStr = config.updateColumns || '';
+    const whereStatementStr = config.whereStatement || '';
+    
+    return `
+  # UPSERT operation using raw SQL
+  def upsert_dataframe(df, engine, table_name, conflict_cols_str, update_cols_str=None, where_statement=None):
+    """
+    Perform UPSERT operation on PostgreSQL table
+    """
+    if df.empty:
+        return
+        
+    # Parse conflict columns from string
+    if not conflict_cols_str or not conflict_cols_str.strip():
+        raise ValueError("Conflict columns must be specified for UPSERT operations")
+        
+    # Converts "file_name,hash,time_created" → ['file_name', 'hash', 'time_created']
+    conflict_cols = [col.strip() for col in conflict_cols_str.split(',') if col.strip()]
+        
+    # Get all column names from dataframe
+    all_columns = list(df.columns)
+        
+    # Parse update columns or use all columns except conflict columns
+    if update_cols_str and update_cols_str.strip():
+        update_cols = [col.strip() for col in update_cols_str.split(',') if col.strip()]
+    else:
+        update_cols = [col for col in all_columns if col not in conflict_cols]
+        
+    # Create the INSERT statement with named parameters
+    columns_str = ', '.join(all_columns)  # This is the full list of columns
+    placeholders = ', '.join([f':{col}' for col in all_columns]) # This is for VALUES --> creates named placeholders for each column
+        
+    # Create the ON CONFLICT clause
+    conflict_cols_str = ', '.join(conflict_cols)
+        
+    # Create the DO UPDATE clause
+    update_assignments = []
+    for col in update_cols:
+        update_assignments.append(f"{col} = EXCLUDED.{col}")
+    update_clause = ', '.join(update_assignments)  # This is the SET clause for the update, for this PART --> DO UPDATE SET {update_clause}
+        
+    # Add WHERE clause if provided
+    where_clause = ""
+    if where_statement and where_statement.strip():
+        where_clause = f" WHERE {where_statement.strip()}"
+        
+    # Build the complete UPSERT query
+    upsert_query = f"""
+    INSERT INTO {table_name} ({columns_str})
+    VALUES ({placeholders})
+    ON CONFLICT ({conflict_cols_str})
+    DO UPDATE SET {update_clause}
+    {where_clause}
+    """
+        
+    # Execute the UPSERT for each row using named parameters
+    with engine.begin() as conn:
+        for _, row in df.iterrows():
+            # Create a dictionary of column names to values
+            row_dict = {col: row[col] for col in all_columns}
+            conn.execute(sqlalchemy.text(upsert_query), row_dict)
+
+  # Perform UPSERT operation
+  conflict_columns = "${conflictColumnsStr}"
+  update_columns = "${updateColumnsStr}"
+  where_statement = "${whereStatementStr}"
+
+  upsert_dataframe(
+      ${inputName},
+      ${uniqueEngineName},
+      "${tableName}",
+      conflict_columns,
+      update_columns if update_columns else None,
+      where_statement if where_statement else None
+  )
+  `;
   }
 
   public generateComponentCode({ config, inputName }): string {
@@ -216,16 +338,30 @@ ${inputName} = ${inputName}[[${selectedColumns}]]
       }
     }
 
-    const ifExistsAction = config.ifTableExists;
-
-    const schemaParam = (config.schema && config.schema.toLowerCase() !== 'public')
-      ? `,
-  schema="${config.schema}"`
-      : '';
-
     const connectionCode = this.generateDatabaseConnectionCode({ config, connectionName: uniqueEngineName });
 
-    return `
+    // Generate different code based on the mode
+    if (config.mode === "upsert") {
+      const upsertCode = this.generateUpsertCode({ config, inputName, uniqueEngineName });
+      
+      return `
+${connectionCode}
+${mappingsCode}${columnsCode}
+# UPSERT operation
+try:
+${upsertCode}
+finally:
+    ${uniqueEngineName}.dispose()
+`;
+    } else {
+      // Original INSERT logic
+      const ifExistsAction = config.ifTableExists;
+      const schemaParam = (config.schema && config.schema.toLowerCase() !== 'public')
+        ? `,
+  schema="${config.schema}"`
+        : '';
+
+      return `
 ${connectionCode}
 ${mappingsCode}${columnsCode}
 # Write DataFrame to Postgres
@@ -239,5 +375,6 @@ try:
 finally:
     ${uniqueEngineName}.dispose()
 `;
+    }
   }
 }

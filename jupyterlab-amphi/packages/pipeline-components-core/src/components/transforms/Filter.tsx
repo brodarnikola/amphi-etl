@@ -90,7 +90,7 @@ export class Filter extends BaseCoreComponent {
   }
 
   public provideImports({ config }): string[] {
-    return [];
+    return ["import pandas as pd"];
   }
 
   public generateComponentCode({
@@ -121,6 +121,8 @@ ${outputName} = ${inputName}.query("${expr}")
 
     let code = `
 # Filter rows based on condition
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
 `;
     let queryExpression: string;
     let conditionValueReference: string;

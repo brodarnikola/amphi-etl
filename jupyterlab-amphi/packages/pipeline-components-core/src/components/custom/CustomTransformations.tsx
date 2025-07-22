@@ -90,6 +90,7 @@ export class CustomTransformations extends BaseCoreComponent {
 
   public generateComponentCode({ config, inputName, outputName }): string {
     // We only remove import lines from config.code, as config.imports is backward-compat
+ 
     let userCode = (config.code || '')
       .split('\n')
       .filter(line => {

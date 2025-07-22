@@ -1,0 +1,3 @@
+[jupyterhub.authenticators]
+firstuse = firstuseauthenticator:FirstUseAuthenticator
+firstuseauthenticator = firstuseauthenticator:FirstUseAuthenticator
