@@ -334,6 +334,10 @@ export class TransformInput extends PipelineComponent<ComponentItem>() {
 # Extract dictionary from input
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
+
+# Store the original input DataFrame for later combination
+original_input = ${inputName}.copy()
+
 ${outputName}_dict = ${inputName}['json_data'].iloc[0]
 
 print(f"Total keys in input: {len(${outputName}_dict)}")
@@ -432,15 +436,107 @@ for range_str in ${JSON.stringify(ranges)}:
 print(f"Filtered keys: {len(${outputName}_filtered)}")
 print(f"Filtered keys list: {list(${outputName}_filtered.keys())}")
 
+# Create DataFrame with cell references as index
+${outputName}_intermediate = pd.DataFrame(${outputName}_filtered, index=[0]).T
 
-# Create DataFrame
-${outputName} = pd.DataFrame(${outputName}_filtered, index=[0]).T
+print("KEY VALUE TRANSFORMS: Generating component code for KEY VALUE")
+print(f"KEY VALUE TRANSFORMS: Input Name: ${outputName}_intermediate")
+print(f"KEY VALUE TRANSFORMS: Output Name: ${outputName}")
+
+# Apply TransformToTable logic
+def wide_transform(input_df):
+    df = input_df.reset_index() 
+    df.columns = ['cell', 'value'] 
+    df['col_letter'] = df['cell'].str.extract(r'([A-Z]+)', expand=False) 
+    df['col_num'] = df['cell'].str.extract(r'(\\d+)', expand=False).astype(int)
+
+    output = df.pivot(index='col_num', columns='col_letter', values='value')
+
+    # Retain only alphabetic columns
+    output = output[[col for col in output.columns if col.isalpha()]]
+
+    output.index = [f"{idx}" for idx in output.index]
+    output = output.where(pd.notna(output), np.nan)
+    return output
+
+${outputName} = wide_transform(${outputName}_intermediate)
+
+${outputName}['CUST_CODE'] = None  # Initialize with None or set a default value
+${outputName}['VERSION'] = None   # Initialize with None or set a default value
+
+# Add context variables as new columns if they exist
+try:
+    # Try to access pipeline_cust_code variable
+    ${outputName}['CUST_CODE'] = pipeline_cust_code
+    print(f"Added CUST_CODE column with value: {pipeline_cust_code}")
+except NameError:
+    # If variable doesn't exist, set to None or a default value
+    ${outputName}['CUST_CODE'] = None
+    print("Warning: pipeline_cust_code variable not found, setting CUST_CODE to None")
+
+try:
+    # Try to access pipeline_version variable  
+    ${outputName}['VERSION'] = pipeline_version
+    print(f"Added VERSION column with value: {pipeline_version}")
+except NameError:
+    # If variable doesn't exist, set to None or a default value
+    ${outputName}['VERSION'] = None
+    print("Warning: pipeline_version variable not found, setting VERSION to None")
+
+print(f"KEY VALUE TRANSFORMS SNIPPET CODE: Applied wide_transform to ${outputName}_intermediate")
+
+
+print(f"Final DataFrame shape: {${outputName}.shape}")
+print(f"Final DataFrame columns: {list(${outputName}.columns)}")
+
 `;
 
         return rangeProcessingCode;
     }
 
 }
+
+
+// # Create DataFrame from filtered data
+// ${outputName} = pd.DataFrame(${outputName}_filtered, index=[0]).T
+
+// # Add column 'A' with values from previous dataframe's 'id' column
+// if not ${inputName}.empty and 'id' in ${inputName}.columns:
+//     # Get the 'id' values from the input dataframe
+//     id_values = ${inputName}['id'].tolist()
+    
+//     # Add 'A' column to the output dataframe
+//     # If we have multiple id values, we'll concatenate them with '||' separator
+//     if len(id_values) > 1:
+//         ${outputName}['A'] = '||'.join(map(str, id_values))
+//     elif len(id_values) == 1:
+//         ${outputName}['A'] = str(id_values[0])
+//     else:
+//         ${outputName}['A'] = None
+// else:
+//     # If no input data or no 'id' column, set 'A' to None
+//     ${outputName}['A'] = None
+
+
+// # Create DataFrame from filtered data
+// filtered_df = pd.DataFrame(${outputName}_filtered, index=[0]).T
+
+// # Add column "A" with values from the "id" column of the previous DataFrame
+// if 'id' in original_input.columns:
+//     # Get the id value from the first row (assuming single row input)
+//     id_value = original_input['id'].iloc[0] if len(original_input) > 0 else None
+    
+//     # Add "A" column to filtered DataFrame with the id value for all rows
+//     filtered_df['A'] = id_value
+//     print(f"Added column 'A' with value: {id_value}")
+// else:
+//     print("Warning: 'id' column not found in previous DataFrame")
+//     filtered_df['A'] = None
+
+// # Set the final output to the filtered DataFrame with the new "A" column
+// ${outputName} = filtered_df
+
+
  
 
 // # Debug information
@@ -448,3 +544,48 @@ ${outputName} = pd.DataFrame(${outputName}_filtered, index=[0]).T
 // #print(f"Total input keys: {len(${outputName}_dict)}")
 // print(f"Filtered keys count: {len(${outputName}_filtered)}")
 // print(f"Filtered keys: {sorted(${outputName}_filtered.keys())}")
+
+
+
+// # Create DataFrame from filtered data
+// filtered_df = pd.DataFrame(${outputName}_filtered, index=[0]).T
+
+// # Combine original input with filtered data
+// # Method 1: Concatenate along columns (side by side)
+// ${outputName} = pd.concat([original_input, filtered_df], axis=1)
+
+
+
+// # Alternative Method 2: If you want to merge on index/specific column
+// # ${outputName} = original_input.merge(filtered_df, left_index=True, right_index=True, how='outer')
+
+// # Alternative Method 3: If you want to append rows instead of columns
+// # ${outputName} = pd.concat([original_input, filtered_df], axis=0, ignore_index=True)
+
+// print(f"Final DataFrame shape: {${outputName}.shape}")
+// print(f"Final DataFrame columns: {list(${outputName}.columns)}")
+
+
+
+
+
+// # Create DataFrame from filtered data
+// ${outputName}_new = pd.DataFrame(${outputName}_filtered, index=[0]).T
+
+// # Combine with input data from previous component
+// if not ${inputName}.empty and not ${outputName}_new.empty:
+//     # Reset index for proper concatenation
+//     ${inputName}_reset = ${inputName}.reset_index(drop=True)
+//     ${outputName}_new_reset = ${outputName}_new.reset_index(drop=True)
+    
+//     # Concatenate horizontally (side by side)
+//     ${outputName} = pd.concat([${inputName}_reset, ${outputName}_new_reset], axis=1, ignore_index=False)
+// elif not ${inputName}.empty:
+//     # If no filtered data, return original input
+//     ${outputName} = ${inputName}.copy()
+// elif not ${outputName}_new.empty:
+//     # If no input data, return filtered data only
+//     ${outputName} = ${outputName}_new.copy()
+// else:
+//     # If both are empty, return empty DataFrame
+//     ${outputName} = pd.DataFrame()

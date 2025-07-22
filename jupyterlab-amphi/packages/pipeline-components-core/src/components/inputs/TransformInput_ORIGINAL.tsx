@@ -1,6 +1,7 @@
+
 import { ComponentItem, PipelineComponent, onChange, renderComponentUI, renderHandle, CodeTextarea, SelectColumns, SelectRegular, createZoomSelector } from '@amphi/pipeline-components-manager';
 import React, { useContext, useEffect, useCallback, useState, useRef } from 'react';
-import type { GetRef, InputRef } from 'antd';
+import type { GetRef, InputRef, message } from 'antd';
 import { CloseOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
 import { Form, Table, ConfigProvider, Card, Input, Select, Row, Button, Typography, Modal, Col, Flex, Divider, Space, Checkbox, Dropdown } from 'antd';
 import { Handle, Position, useReactFlow, useStore, useStoreApi, NodeToolbar } from 'reactflow';
@@ -10,9 +11,9 @@ import "ace-builds/src-noconflict/mode-json";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 
-export class TransformInput2 extends PipelineComponent<ComponentItem>() {
+export class TransformInput extends PipelineComponent<ComponentItem>() {
 
-    public _name = "JSON Range Input 2";
+    public _name = "JSON Range Input";
     public _id = "jsonRangeInput";
     public _type = "pandas_df_processor";
     public _category = "transforms";
@@ -47,36 +48,95 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
         setModalOpen
     }) => {
         const [ranges, setRanges] = useState(data.ranges || []);
-        const [currentRange, setCurrentRange] = useState(''); 
+        const [currentRange, setCurrentRange] = useState('');
         const rangeInputRef = useRef<InputRef>(null);
-    
+
+        // Inside your component
+        const [rangeError, setRangeError] = useState('');
+
         useEffect(() => {
             setRanges(data.ranges || []);
         }, [data]);
-     
-        const handleAddRange = () => {
-            if (currentRange.trim()) {
-                const newRanges = [...(data.ranges || []), currentRange.trim()];
-                const updatedData = {
-                    ...data,
-                    ranges: newRanges
-                };
-                handleChange(updatedData);
-                setCurrentRange('');
-                setTimeout(() => rangeInputRef.current?.focus(), 0);
+
+        const validateRange = (range: string): boolean => {
+            const pattern = /^[a-zA-Z]\d+-[a-zA-Z]\d+$/;
+            if (!pattern.test(range)) {
+                setRangeError('Invalid format. Use format like A1-B10');
+                return false;
             }
+
+            const [start, end] = range.split('-');
+            const startLetter = start[0].toUpperCase();
+            const endLetter = end[0].toUpperCase();
+
+            // if (startLetter !== endLetter) {
+            //   setRangeError('Range must be within same letter group (e.g., A1-A10)');
+            //   return false;
+            // }
+
+            const startNum = parseInt(start.slice(1));
+            const endNum = parseInt(end.slice(1));
+
+            if (isNaN(startNum) || isNaN(endNum)) {
+                setRangeError('Numbers must follow the letter');
+                return false;
+            }
+
+            //if (startNum >= endNum) {
+            if (startNum > endNum) {
+                setRangeError('Start number must be less than end number');
+                return false;
+            }
+
+            setRangeError('');
+            return true;
         };
-    
+
+        const handleAddRange = () => {
+            const trimmedRange = currentRange.trim();
+            if (!trimmedRange) return;
+
+            if (!validateRange(trimmedRange)) {
+                //message.error(rangeError);
+                return;
+            }
+
+            // Convert to uppercase for consistency
+            const formattedRange = trimmedRange.toUpperCase();
+
+            if (ranges.includes(formattedRange)) {
+                //message.warning('This range already exists');
+                return;
+            }
+
+            const newRanges = [...ranges, formattedRange];
+            const updatedData = { ...data, ranges: newRanges };
+
+            handleChange(updatedData);
+            setCurrentRange('');
+            setTimeout(() => rangeInputRef.current?.focus(), 0);
+            // if (currentRange.trim()) {
+            //     const newRanges = [...(data.ranges || []), currentRange.trim()];
+            //     const updatedData = {
+            //         ...data,
+            //         ranges: newRanges
+            //     };
+            //     handleChange(updatedData);
+            //     setCurrentRange('');
+            //     setTimeout(() => rangeInputRef.current?.focus(), 0);
+            // }
+        };
+
         const handleRemoveRange = (index) => {
             const newRanges = ranges.filter((_, i) => i !== index);
             setRanges(newRanges);
             handleChange({ ...data, ranges: newRanges });
         };
-    
+
         return (
-            <ConfigProvider theme={{ token: { colorPrimary: '#5F9B97' } }}> 
+            <ConfigProvider theme={{ token: { colorPrimary: '#5F9B97' } }}>
                 <Modal
-                    title="JSON Range Input 2"
+                    title="JSON Range Input"
                     open={modalOpen}
                     onOk={() => {
                         const updatedData = {
@@ -92,7 +152,7 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
                 >
                     <div style={{ padding: 16 }}>
                         <Divider>Range Specifications</Divider>
-                        
+
                         <Space.Compact style={{ width: '100%', marginBottom: 16 }}>
                             <Input
                                 ref={rangeInputRef}
@@ -101,27 +161,32 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
                                 onChange={(e) => setCurrentRange(e.target.value)}
                                 onPressEnter={handleAddRange}
                             />
-                            <Button 
-                                type="primary" 
-                                icon={<PlusOutlined />} 
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
                                 onClick={handleAddRange}
                             />
                         </Space.Compact>
-    
+                        {rangeError && (
+                            <div style={{ color: 'red', marginBottom: 16 }}>
+                                {rangeError}
+                            </div>
+                        )}
+
                         <div style={{ maxHeight: 400, overflowY: 'auto' }}>
                             {ranges.map((range, index) => (
-                                <div key={index} style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                <div key={index} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     marginBottom: 8,
                                     padding: 8,
                                     background: '#f5f5f5',
                                     borderRadius: 4
                                 }}>
                                     <span style={{ flex: 1 }}>{range}</span>
-                                    <Button 
-                                        danger 
-                                        icon={<MinusOutlined />} 
+                                    <Button
+                                        danger
+                                        icon={<MinusOutlined />}
                                         onClick={() => handleRemoveRange(index)}
                                     />
                                 </div>
@@ -154,20 +219,20 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
         const internals = { nodeInternals, edges, nodeId, componentService }
 
         const handleElement = React.createElement(renderHandle, {
-            type: TransformInput2.Type,
+            type: TransformInput.Type,
             Handle: Handle,
             Position: Position,
             internals: internals
         });
 
         const handleChange = useCallback((newData: any) => {
-            
+
             // Ensure ranges is always an array
             const updatedData = {
                 ...newData,
                 ranges: Array.isArray(newData.ranges) ? newData.ranges : []
             };
-            
+
             // Force update the node data
             setNodes((nds) =>
                 nds.map((node) => {
@@ -180,7 +245,7 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
                     return node;
                 })
             );
-        }, [nodeId, setNodes]); 
+        }, [nodeId, setNodes]);
 
         const isSelected = useStore((state) => !!state.nodeInternals.get(id)?.selected);
 
@@ -188,20 +253,20 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
             // Get the absolute latest data directly from the store
             const nodes = store.getState().nodeInternals;
             const currentNode = nodes.get(nodeId);
-            
+
             if (!currentNode) {
                 console.error("Node not found in store");
                 return;
             }
-            
+
             console.log("Executing with node data:", currentNode.data);
-            
-            commands.execute('pipeline-editor:run-pipeline-until', { 
+
+            commands.execute('pipeline-editor:run-pipeline-until', {
                 nodeId: nodeId,
                 context: context,
                 nodeData: currentNode.data // Use the exact data from the store
             });
-            
+
             // Update last executed timestamp
             handleChange({
                 ...currentNode.data,
@@ -220,8 +285,8 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
                     context: context,
                     manager: manager,
                     commands: commands,
-                    name: TransformInput2.Name,
-                    ConfigForm: TransformInput2.ConfigForm,
+                    name: TransformInput.Name,
+                    ConfigForm: TransformInput.ConfigForm,
                     configFormProps: {
                         nodeId: id,
                         data,
@@ -235,7 +300,7 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
                         modalOpen,
                         setModalOpen
                     },
-                    Icon: TransformInput2.Icon,
+                    Icon: TransformInput.Icon,
                     showContent: showContent,
                     handle: handleElement,
                     deleteNode: deleteNode,
@@ -246,7 +311,7 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
                 {(showContent || isSelected) && (
                     <NodeToolbar isVisible position={Position.Bottom}>
                         <button onClick={() => setModalOpen(true)}><settingsIcon.react /></button>
-                        {(TransformInput2.Type.includes('input') || TransformInput2.Type.includes('processor') || TransformInput2.Type.includes('output')) && (
+                        {(TransformInput.Type.includes('input') || TransformInput.Type.includes('processor') || TransformInput.Type.includes('output')) && (
                             <button onClick={() => executeUntilComponent()} disabled={!enableExecution}
                                 style={{ opacity: enableExecution ? 1 : 0.5, cursor: enableExecution ? 'pointer' : 'not-allowed' }}>
                                 <playCircleIcon.react />
@@ -258,58 +323,128 @@ export class TransformInput2 extends PipelineComponent<ComponentItem>() {
         );
     }
 
+    public provideImports({ config }): string[] {
+        return ["import pandas as pd", "import json", "import numpy as np"];
+    }
+
     public generateComponentCode({ config, inputName, outputName }): string {
         const ranges = Array.isArray(config.ranges) ? config.ranges : [];
-        
+
         let rangeProcessingCode = `
 # Extract dictionary from input
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
 ${outputName}_dict = ${inputName}['json_data'].iloc[0]
-    
-# Debug print input keys
-print("All keys in input:", sorted(${outputName}_dict.keys()))
-    
+
+print(f"Total keys in input: {len(${outputName}_dict)}")
+
 # Create helper function for range comparison
 def in_range(key, ranges):
+    if not key or len(key) < 2 or not key[0].isalpha() or not key[1:].isdigit():
+        return False
+
     for range_str in ranges:
         if '-' not in range_str:
             continue
+
         start, end = range_str.split('-')
-        # Check if key matches the letter pattern (e.g., C11)
-        if len(key) >= 1 and key[0].isalpha():
-            letter = key[0]
-            # Check if the rest is numeric
-            if key[1:].isdigit():
-                num = int(key[1:])
-                # Check if letter matches range
-                if letter == start[0] and letter == end[0]:
-                    start_num = int(start[1:]) if start[1:].isdigit() else 0
-                    end_num = int(end[1:]) if end[1:].isdigit() else float('inf')
-                    if start_num <= num <= end_num:
-                        return True
-    return False
+        if len(start) < 2 or len(end) < 2:
+            continue
+
+        # Extract letter and number parts
+        key_letter = key[0].upper()
+        key_num = int(key[1:])
+
+        start_letter = start[0].upper()
+        start_num = int(start[1:]) if start[1:].isdigit() else 0
+
+        end_letter = end[0].upper()
+        end_num = int(end[1:]) if end[1:].isdigit() else float('inf')
+
+        # Convert letters to ASCII values for comparison
+        key_ord = ord(key_letter)
+        start_ord = ord(start_letter)
+        end_ord = ord(end_letter)
+
+        # Check if key is within the letter range
+        if start_ord <= key_ord <= end_ord:
+            
+            # For same-letter ranges, check number
+            if key_letter == start_letter and key_letter == end_letter:
+                if start_num <= key_num <= end_num:
+                    return True
+            else:
+                # Multi-column range (e.g., E5-G8)
+                if key_letter == start_letter:
+                    # For start column, row must be >= start_num AND <= end_num
+                    is_in_range = start_num <= key_num <= end_num
+                elif key_letter == end_letter:
+                    # For end column, row must be >= start_num AND <= end_num  
+                    is_in_range = start_num <= key_num <= end_num
+                else:
+                    # For middle columns, row must be within the range bounds
+                    is_in_range = start_num <= key_num <= end_num
+
+                if is_in_range: 
+                    return True
     
+    return False
+
 # Filter by ranges
 ${outputName}_filtered = {
     k: v for k, v in ${outputName}_dict.items()
     if in_range(k, ${JSON.stringify(ranges)})
 }
-    
-# Debug print filtered keys
-print("Filtered keys:", sorted(${outputName}_filtered.keys()))
+
+# Add missing columns with null values for each range
+for range_str in ${JSON.stringify(ranges)}:
+  if '-' not in range_str:
+      continue
    
+  start, end = range_str.split('-')
+  if len(start) < 2 or len(end) < 2:
+      continue
+    
+  start_letter = start[0].upper()
+  end_letter = end[0].upper()
+  start_num = int(start[1:]) if start[1:].isdigit() else 0
+  end_num = int(end[1:]) if end[1:].isdigit() else 0
+    
+  start_ord = ord(start_letter)
+  end_ord = ord(end_letter)
+    
+  # For each letter in the range
+  for letter_ord in range(start_ord, end_ord + 1):
+    letter = chr(letter_ord)
+        
+    # Check if any key exists for this letter in the range
+    letter_exists = any(k.startswith(letter) for k in ${outputName}_filtered.keys())
+        
+    if not letter_exists:
+      # Add a null entry for this letter
+      null_key = f"{letter}{start_num}"
+      ${outputName}_filtered[null_key] = np.nan #.astype("string")
+      print(f"Added missing column: {null_key} with null value")
+
+# Convert all values to strings, use NaN for empty or NaN values
+#${outputName}_str = {k: str(v) if v is not None and not pd.isna(v) else np.nan for k, v in ${outputName}_filtered.items()}
+
+print(f"Filtered keys: {len(${outputName}_filtered)}")
+print(f"Filtered keys list: {list(${outputName}_filtered.keys())}")
+
+
 # Create DataFrame
 ${outputName} = pd.DataFrame(${outputName}_filtered, index=[0]).T
-    
-# Debug final result
-print("Final DataFrame:")
-print(${outputName})
 `;
-    
+
         return rangeProcessingCode;
     }
 
-    public provideImports({ config }): string[] {
-        return ["import pandas as pd", "import json"];
-    }
-
 }
+ 
+
+// # Debug information
+// #print(f"Input ranges: ${JSON.stringify(ranges)}")
+// #print(f"Total input keys: {len(${outputName}_dict)}")
+// print(f"Filtered keys count: {len(${outputName}_filtered)}")
+// print(f"Filtered keys: {sorted(${outputName}_filtered.keys())}")
