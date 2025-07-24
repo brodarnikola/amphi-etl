@@ -39,7 +39,8 @@ export class PostgresOutput extends BaseCoreComponent {
           label: "Database Name",
           id: "databaseName",
           connection: "Postgres",
-          placeholder: "Enter database name"
+          placeholder: "Enter database name",
+          advanced: true
         },
         {
           type: "input",
@@ -47,13 +48,7 @@ export class PostgresOutput extends BaseCoreComponent {
           id: "schema",
           connection: "Postgres",
           placeholder: "Enter schema name",
-        },
-        {
-          type: "table",
-          label: "Table Name",
-          query: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';`,
-          id: "tableName",
-          placeholder: "Enter table name"
+          advanced: true
         },
         {
           type: "input",
@@ -71,6 +66,14 @@ export class PostgresOutput extends BaseCoreComponent {
           connection: "Postgres",
           placeholder: "Enter password",
           advanced: true
+        },
+        {
+          type: "table",
+          label: "Table Name",
+          query: `SELECT table_name FROM information_schema.tables WHERE table_schema = '{{schema}}';`,
+          id: "tableName",
+          connection: "Postgres",
+          placeholder: "Enter table name"
         },
         {
           type: "radio",

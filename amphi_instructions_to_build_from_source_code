@@ -1,0 +1,77 @@
+Building Amphi from Source
+This document explains how to build Amphi from source code. Amphi consists of two main components:
+
+jupyterlab-amphi: The core JupyterLab extension containing the main application logic
+amphi-etl: The full Amphi ETL application that builds upon the core extension
+👉 Prerequisites 👈
+Python must be installed on your machine. Before starting the build process, we strongly recommend setting up a Python virtual environment. This helps avoid conflicts between Python packages and ensures a clean installation. You can create one using either venv or conda:
+
+Creating a Virtual Environment
+Using venv:
+
+On Windows
+python -m venv venv
+.\venv\Scripts\activate
+another example
+
+python -m venv C:\Users\yourusername\building_amphi
+cd C:\Users\yourusername\building_amphi
+Scripts\activate
+on cmd, you must see the name of your virtual environment on the left.
+
+On macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+Using conda:
+
+# Create a new environment
+conda create -n amphi python=3.x
+conda activate amphi
+Keep this virtual environment active throughout the entire build process.
+
+👷 Building jupyterlab-amphi 👷
+The first step is to build the core JupyterLab extension.
+
+Navigate to the jupyterlab-amphi directory: (here the cd.. is because you have to go back in the folder hierarchy)
+cd ..
+cd jupyterlab-amphi
+Install and build the extension:
+On macOS/Linux:
+
+pip install jupyterlab
+jlpm install
+jlpm run build
+python3 -m pip install .
+On Windows:
+
+pip install jupyterlab
+jlpm install
+jlpm run build
+python -m pip install .
+check that the extension is really installed with
+
+python -m jupyter labextension list
+To test the extension in JupyterLab: These commands will launch jupyterlab with the extension. Please note you shouldn't get the Amphi interface here. It is highly recommanded to clear your browser cache before this step. On macOS/Linux:
+jupyter lab --notebook-dir=/path/to/your/workspace
+On Windows:
+
+jupyter lab --notebook-dir=C:\path\to\your\workspace
+Replace /path/to/your/workspace or C:\path\to\your\workspace with your desired workspace directory (i.e. the directory where are your pipelines, not your building or installation directory).
+
+Note: You can add --ContentManager.allow_hidden=True to the launch command if you want to show hidden files in the file browser. to interrupt , close your browser tab and ctrl+c on cmd
+
+👷 Building amphi-etl 👷
+After successfully building jupyterlab-amphi, you can proceed with building the full Amphi ETL application.
+
+Navigate to the amphi-etl directory:
+cd ../amphi-etl
+Modify requirements.txt to use the local jupyterlab-amphi build (save a copy somewhere):
+
+Open requirements.txt
+Find the line containing jupyterlab-amphi==X.X.X
+Replace it with ../jupyterlab-amphi
+Install the requirements:
+
+python -m pip install -r requirements.txt
+Launch Amphi ETL:
+jupyter lab --notebook-dir=/path/to/your/workspace

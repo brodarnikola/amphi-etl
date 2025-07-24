@@ -1,7 +1,8 @@
-import { KernelMessage } from '@jupyterlab/services';
-import React from 'react';
+import { KernelMessage } from '@jupyterlab/services'; 
+import React, { useState, useCallback } from 'react';
 import { CodeGenerator } from './CodeGenerator';
 import { PipelineService } from './PipelineService';
+import { all } from 'ace-builds-internal/config';
 
 export class RequestService {
 
@@ -329,9 +330,37 @@ export class RequestService {
   ): any {
     setLoadings(true);
 
+    console.log("Retrieve table list with schemaName:", schemaName, "and query:", query);
+
+    let correctSchemaName = schemaName;
+    if(correctSchemaName.startsWith('{') && correctSchemaName.endsWith('}')) {
+
+      const allConnections = PipelineService.getConnections(context.model.toString());
+      console.log("allConnections:", allConnections); 
+
+      const escapedSchemaName = schemaName.substring(1, schemaName.length-1)
+      console.log("escapedSchemaName:", escapedSchemaName); 
+
+      for( const connection of allConnections ) {  
+        let stopLoop = false;
+        for( const variable of connection.variables ) { 
+          if (variable.name == escapedSchemaName) {
+            correctSchemaName = variable.value;
+            stopLoop = true;
+            console.log("correctSchemaName:", correctSchemaName);
+            break;
+          }  
+        }
+        if( stopLoop ) break;
+      } 
+    }
+ 
     // Escape and replace schema in the query
-    let escapedQuery = query.replace(/"/g, '\\"');
-    escapedQuery = escapedQuery.replace(/{{schema}}/g, schemaName);
+    let escapedQuery = query.replace(/"/g, '\\"'); 
+ 
+    escapedQuery = escapedQuery.replace(/{{schema}}/g, correctSchemaName);
+
+    console.log("Escaped query: 22", escapedQuery);
 
     // Get environment and connection code
     const envVariableCode = CodeGenerator.getEnvironmentVariableCode(context.model.toString(), componentService);

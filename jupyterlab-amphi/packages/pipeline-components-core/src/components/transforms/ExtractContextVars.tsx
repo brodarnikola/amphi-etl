@@ -6,8 +6,10 @@ export class ExtractContextVars extends BaseCoreComponent {
     const defaultConfig = { 
       custCodeColumn: "",
       versionColumn: "",
+      fileIdColumn: "",
       custCodeVarName: "pipeline_cust_code",
-      versionVarName: "pipeline_version"
+      versionVarName: "pipeline_version",
+      fileIdVarName: "pipeline_file_id"
     };
     const form = {
       idPrefix: "component__form",
@@ -27,6 +29,13 @@ export class ExtractContextVars extends BaseCoreComponent {
           tooltip: "Select the column that contains the customer code value"
         },
         {
+          type: "column",
+          label: "File ID Column",
+          id: "fileIdColumn",
+          placeholder: "Select column containing file ID",
+          tooltip: "Select the column that contains the file ID value"
+        },
+        {
           type: "column", 
           label: "Version Column",
           id: "versionColumn",
@@ -39,6 +48,14 @@ export class ExtractContextVars extends BaseCoreComponent {
           id: "custCodeVarName",
           placeholder: "pipeline_cust_code",
           tooltip: "Name for the global variable that will store the customer code",
+          advanced: true
+        },
+        {
+          type: "input",
+          label: "File Id Variable Name", 
+          id: "fileIdVarName",
+          placeholder: "pipeline_file_id",
+          tooltip: "Name for the global variable that will store the file ID",
           advanced: true
         },
         {
@@ -83,6 +100,17 @@ export class ExtractContextVars extends BaseCoreComponent {
       
       code += `${versionVarName} = ${inputName}.iloc[0][${versionColumnRef}]\n`;
       code += `print(f"Extracted version: {${versionVarName}}")\n`;
+    }
+
+    // Handle file id column  
+    if (config.fileIdColumn && config.fileIdColumn.value) {
+      const fileIdColumnName = config.fileIdColumn.value;
+      const fileIdColumnIsNamed = config.fileIdColumn.named;
+      const fileIdColumnRef = fileIdColumnIsNamed ? `'${fileIdColumnName}'` : fileIdColumnName;
+      const fileIdVarName = config.fileIdVarName || "pipeline_file_id";
+      
+      code += `${fileIdVarName} = ${inputName}.iloc[0][${fileIdColumnRef}]\n`;
+      code += `print(f"Extracted file id: {${fileIdVarName}}")\n`;
     }
     
     code += `\n# Pass through the DataFrame unchanged\n`;

@@ -2,15 +2,15 @@ If you are on macOs, first install rosseta2
 
 Then inside rancher desktop, go to preferences, virtual machine, emulation, VZ, and select "Enable Rosetta 2 support".
 
-docker buildx build --platform linux/amd64 -t  xpertmind/amphi:0.8.28amd64k --load .   
-docker buildx build --platform linux/arm64 -t  xpertmind/amphi:0.8.28arm64k --load .  
+docker buildx build --platform linux/amd64 -t  xpertmind/amphi:0.8.28amd64n --load .   
+docker buildx build --platform linux/arm64 -t  xpertmind/amphi:0.8.28arm64n --load .  
 
 
-docker build --load --tag xpertmind/amphi:0.8.28amd64k .  --> Not always necessary, only if buildx does not work
-docker build --load --tag xpertmind/amphi:0.8.28arm64k .  --> Not always necessary, only if buildx does not work
+docker build --load --tag xpertmind/amphi:0.8.28amd64n .  --> Not always necessary, only if buildx does not work
+docker build --load --tag xpertmind/amphi:0.8.28arm64n .  --> Not always necessary, only if buildx does not work
 
-docker push xpertmind/amphi:0.8.28amd64k
-docker push xpertmind/amphi:0.8.28arm64k 
+docker push xpertmind/amphi:0.8.28amd64n
+docker push xpertmind/amphi:0.8.28arm64n 
 
-docker manifest create xpertmind/amphi:0.8.28ma12 xpertmind/amphi:0.8.28amd64k xpertmind/amphi:0.8.28arm64k 
-docker manifest push xpertmind/amphi:0.8.28ma12
+docker manifest create xpertmind/amphi:0.8.28ma15 xpertmind/amphi:0.8.28amd64n xpertmind/amphi:0.8.28arm64n
+docker manifest push xpertmind/amphi:0.8.28ma15

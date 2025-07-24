@@ -462,6 +462,7 @@ def wide_transform(input_df):
 ${outputName} = wide_transform(${outputName}_intermediate)
 
 ${outputName}['CUST_CODE'] = None  # Initialize with None or set a default value
+${outputName}['FILE_ID'] = None   # Initialize with None or set a default value
 ${outputName}['VERSION'] = None   # Initialize with None or set a default value
 
 # Add context variables as new columns if they exist
@@ -475,13 +476,22 @@ except NameError:
     print("Warning: pipeline_cust_code variable not found, setting CUST_CODE to None")
 
 try:
+    # Try to access pipeline_file_id variable  
+    ${outputName}['FILE_ID'] = pipeline_file_id
+    print(f"Added FILE_ID column with value: {pipeline_file_id}")
+except NameError:
+    # If variable doesn't exist, set to None or a default value
+    ${outputName}['FILE_ID'] = None
+    print("Warning: pipeline_file_id variable not found, setting VERSION to None")     
+
+try:
     # Try to access pipeline_version variable  
     ${outputName}['VERSION'] = pipeline_version
     print(f"Added VERSION column with value: {pipeline_version}")
 except NameError:
     # If variable doesn't exist, set to None or a default value
     ${outputName}['VERSION'] = None
-    print("Warning: pipeline_version variable not found, setting VERSION to None")
+    print("Warning: pipeline_version variable not found, setting VERSION to None")   
 
 print(f"KEY VALUE TRANSFORMS SNIPPET CODE: Applied wide_transform to ${outputName}_intermediate")
 
