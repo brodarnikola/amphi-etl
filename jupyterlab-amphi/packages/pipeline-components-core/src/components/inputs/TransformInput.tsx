@@ -477,7 +477,7 @@ except NameError:
 
 try:
     # Try to access pipeline_file_id variable  
-    ${outputName}['FILE_ID'] = pipeline_file_id
+    ${outputName}['FILE_ID'] = str(pipeline_file_id)
     print(f"Added FILE_ID column with value: {pipeline_file_id}")
 except NameError:
     # If variable doesn't exist, set to None or a default value
