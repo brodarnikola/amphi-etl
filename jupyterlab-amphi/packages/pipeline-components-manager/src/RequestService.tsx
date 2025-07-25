@@ -331,8 +331,9 @@ export class RequestService {
     setLoadings(true);
 
     console.log("Retrieve table list with schemaName:", schemaName, "and query:", query);
+    console.log("Retrieve nodeId:", nodeId);
 
-    let correctSchemaName = schemaName;
+    let correctSchemaName = schemaName; 
     if(correctSchemaName.startsWith('{') && correctSchemaName.endsWith('}')) {
 
       const allConnections = PipelineService.getConnections(context.model.toString());
@@ -369,6 +370,9 @@ export class RequestService {
     // Get component and data for the node
     const { component, data } = CodeGenerator.getComponentAndDataForNode(nodeId, componentService, context.model.toString());
 
+    console.log("component 22:", component);
+    console.log("data 22:", data);
+
     if (!component) {
       console.error("Component or data not found.");
       setLoadings(false);
@@ -385,23 +389,83 @@ export class RequestService {
     // Generate the import statements string (one per line)
     const importStatements = imports.map((imp: string) => `${imp}`).join('\n');
 
+    console.log("Build python code string");
+    console.log("component.name:", component.name);
+    console.log("component._name", component._name); 
     // Build the Python code string
-    let code = `
+    let code = "";
+    if( component._name == "ClickHouse Output" ) {
+      console.log("Build python code string FOR CLICKHOUSE");
+      const contextNode = PipelineService.getNodeById(context.model.toString(), nodeId);
+      const componentType = contextNode?.type;
+      console.log("contextNode 11:", contextNode);
+      console.log("componentType 22:", componentType);
+      //const component = componentService.getComponent(componentType);
+      //const config = contextNode?.data;
+
+      //console.log("config 11:", config);
+
+      const port = parseInt(data.port, 10);
+      const safePort = isNaN(port) ? 8123 : port;
+
+      console.log("config safePort 11:", safePort);
+
+      console.log("Using ClickHouse table query code");
+      //const tableQueryCode = component.generateTableQueryCode({ config, query: escapedQuery });
+
+      code =  `
 !pip install --quiet ${dependencyString} --disable-pip-version-check
 ${importStatements}
 ${envVariableCode}
 ${connectionCode}
 
+client = clickhouse_connect.get_client(
+    host="${data.host}",
+    port=${safePort},
+    username="${data.username}",
+    password="${data.password}",
+    database="${data.databaseName}"
+)
+      
+try:
+    # Use ClickHouse native query_df method
+    #tables = client.query_df("${escapedQuery}")
+    tables = client.query_df(f"SELECT name FROM system.tables where database='${data.databaseName}';")
+    if len(tables) > 0:
+        tables.iloc[:, 0] = tables.iloc[:, 0].astype(str).str.strip()
+        formatted_output = ", ".join(tables.iloc[:, 0].tolist())
+    else:
+        formatted_output = ""
+    print(formatted_output)
+except Exception as e:
+    print(f"Error querying ClickHouse: {e}")
+    formatted_output = ""
+finally:
+    client.close() 
+`;
+
+      console.log("Generated code for ClickHouse:", code);
+
+    }
+    else {
+      code =  `
+!pip install --quiet ${dependencyString} --disable-pip-version-check
+${importStatements}
+${envVariableCode}
+${connectionCode}
+      
 query = """
 ${escapedQuery}
 """
 ${component.generateDatabaseConnectionCode({ config: data, connectionName: "engine" })}
-
+      
 tables = pd.read_sql(query, con=engine)
 tables.iloc[:, 0] = tables.iloc[:, 0].str.strip()  # Strip leading/trailing spaces
 formatted_output = ", ".join(tables.iloc[:, 0].tolist())
 print(formatted_output)
 `;
+    }
+   
 
     // Format any remaining variables in the code
     code = CodeGenerator.formatVariables(code);

@@ -77,6 +77,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
 
     // Generate op definitions with unique names
     const defaultNameCounters = new Map<string, number>();
+    let envSuffix = "";
     
     for (const nodeId of nodesToTraverse) {
       const node = nodesMap.get(nodeId);
@@ -90,7 +91,7 @@ export class CodeGeneratorDagster extends BaseCodeGenerator {
       let variableName: string;
       
       const flow = PipelineService.filterPipeline(pipelineJson);
-      const envSuffix = this.getEnvironmentSuffix(flow);
+      envSuffix = this.getEnvironmentSuffix(flow);
 
       console.log(`envSuffix: ${envSuffix}`);
 
@@ -246,7 +247,8 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
       nodeDependencies,
       nodesToTraverse,
       nodeToOpName, // Pass the mapping of nodeId to opName
-      variableNames // Pass the mapping
+      variableNames, // Pass the mapping
+      envSuffix
     );
 
     // Combine all parts
@@ -279,7 +281,8 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
     nodeDependencies: Map<string, string[]>,
     nodesToTraverse: string[],
     nodeToOpName: Map<string, string>, // New parameter for node to op name mapping
-    variableNames: Map<string, string>
+    variableNames: Map<string, string>,
+    envSuffix: string
   ): string {
     const processedNodes = new Set<string>();
     const resultVar = new Map<string, string>();
@@ -293,7 +296,7 @@ ${opCode.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
       resultVar.set(nodeId, rVar);
     }
 
-    let jobCode = '\n\n@job\ndef dagster_pipeline():\n';
+    let jobCode =  `\n\n@job\ndef dagster_pipeline_${envSuffix}():\n`;
     const dependencyGraph = new Map<string, string[]>();
     
     for (const edge of flow.edges) {

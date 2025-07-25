@@ -251,35 +251,35 @@ finally:
 `;
   }
 
-  // Override the table query generation for ClickHouse-specific handling
-//   public generateTableQueryCode({ config, query }): string {
-//     const port = parseInt(config.port, 10);
-//     const safePort = isNaN(port) ? 8123 : port;
+  //Override the table query generation for ClickHouse-specific handling
+  public generateTableQueryCode({ config, query }): string {
+    const port = parseInt(config.port, 10);
+    const safePort = isNaN(port) ? 8123 : port;
 
-//     return `
-// # Query ClickHouse tables using native client
-// client = clickhouse_connect.get_client(
-//     host="${config.host}",
-//     port=${safePort},
-//     username="${config.username}",
-//     password="${config.password}",
-//     database="${config.databaseName}"
-// )
+    return `
+# Query ClickHouse tables using native client
+client = clickhouse_connect.get_client(
+    host="${config.host}",
+    port=${safePort},
+    username="${config.username}",
+    password="${config.password}",
+    database="${config.databaseName}"
+)
 
-// try:
-//     # Use ClickHouse native query_df method
-//     tables = client.query_df("${query}")
-//     if len(tables) > 0:
-//         tables.iloc[:, 0] = tables.iloc[:, 0].astype(str).str.strip()
-//         formatted_output = ", ".join(tables.iloc[:, 0].tolist())
-//     else:
-//         formatted_output = ""
-//     print(formatted_output)
-// except Exception as e:
-//     print(f"Error querying ClickHouse: {e}")
-//     formatted_output = ""
-// finally:
-//     client.close()
-// `;
-//   }
+try:
+    # Use ClickHouse native query_df method
+    tables = client.query_df("${query}")
+    if len(tables) > 0:
+        tables.iloc[:, 0] = tables.iloc[:, 0].astype(str).str.strip()
+        formatted_output = ", ".join(tables.iloc[:, 0].tolist())
+    else:
+        formatted_output = ""
+    print(formatted_output)
+except Exception as e:
+    print(f"Error querying ClickHouse: {e}")
+    formatted_output = ""
+finally:
+    client.close()
+`;
+  }
 }
