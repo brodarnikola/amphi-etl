@@ -42,10 +42,14 @@ export class ClickhouseOutput extends BaseCoreComponent {
           placeholder: "Enter database name (default: 'default')"
         },
         {
-          type: "input",
+          //type: "input",
+          type: "table",
           label: "Table Name",
+          query: `SELECT name FROM system.tables where database='{{database}}';`,
           id: "tableName",
-          placeholder: "Enter table name"
+          connection: "ClickHouse",
+          placeholder: "Enter table name",
+          advanced: true
         },
         {
           type: "input",
@@ -90,6 +94,10 @@ export class ClickhouseOutput extends BaseCoreComponent {
           id: "mapping",
           tooltip: "By default the mapping is inferred from the input data. By specifying a schema you override the incoming schema.",
           outputType: "relationalDatabase",
+          imports: ["clickhouse_connect"],
+          drivers: "clickhouse_driver",
+          query: `SHOW COLUMNS FROM {{table}};`,
+          //pythonExtraction: `print("Available columns in ClickHouse table:")`,
           typeOptions: [
             { value: "UInt8", label: "UInt8" },
             { value: "UInt16", label: "UInt16" },
@@ -130,16 +138,48 @@ export class ClickhouseOutput extends BaseCoreComponent {
   }
 
   public provideDependencies({ config }): string[] {
-    return ['clickhouse-connect'];
+    //return ['clickhouse-connect'];
+    return ['clickhouse_connect', 'clickhouse_driver'];
   }
 
   public provideImports({ config }): string[] {
     return ["import pandas as pd", "import clickhouse_connect"];
   }
 
+  public generateDatabaseConnectionCode({ config, connectionName }): string {
+  
+   console.log("config", config); 
+   console.log("connectionName", connectionName); 
+   console.log("safePort 11", config.port); 
+   console.log("config.host", config.host);
+   console.log("config.username", config.username);
+   console.log("config.password", config.password);
+   console.log("config.databaseName", config.databaseName); 
+
+   const port = parseInt(config.port, 10);
+   const safePort = isNaN(port) ? 8123 : port;
+   console.log("safePort 22", safePort); 
+
+   // 
+   // # Connect to ClickHouse 
+   return `${connectionName} = clickhouse_connect.get_client(
+       host="${config.host}",
+       port=${safePort},
+       username="${config.username}",
+       password="${config.password}",
+       database="${config.databaseName}"
+   ) `;
+  } 
+
   public generateComponentCode({ config, inputName }): string {
+
+    const uniqueEngineName = `${inputName}Client`;
+
     const port = parseInt(config.port, 10);
     const safePort = isNaN(port) ? 8123 : port;
+
+    console.log("config.port 00", config.port);
+    console.log("config.port 11", safePort);
 
     let mappingsCode = "";
     let columnsCode = "";
@@ -184,14 +224,10 @@ ${inputName} = ${inputName}[[${selectedColumns}]]
     const ifExistsAction = config.ifTableExists;
 
     return `
-# Connect to ClickHouse
-${inputName}Client = clickhouse_connect.get_client(
-    host="${config.host}",
-    port=${safePort},
-    username="${config.username}",
-    password="${config.password}",
-    database="${config.databaseName}"
-)
+# Connect to ClickHouse 
+print(f"Connecting to ClickHouse at {config.host}:{safePort} with database '{config.databaseName}'")
+${inputName}Client = "${this.generateDatabaseConnectionCode({ config, connectionName: uniqueEngineName })}";
+print(f"Connected to ClickHouse client: {${inputName}Client}")
 
 ${mappingsCode}${columnsCode}
 # Write DataFrame to ClickHouse
@@ -216,34 +252,34 @@ finally:
   }
 
   // Override the table query generation for ClickHouse-specific handling
-  public generateTableQueryCode({ config, query }): string {
-    const port = parseInt(config.port, 10);
-    const safePort = isNaN(port) ? 8123 : port;
+//   public generateTableQueryCode({ config, query }): string {
+//     const port = parseInt(config.port, 10);
+//     const safePort = isNaN(port) ? 8123 : port;
 
-    return `
-# Query ClickHouse tables using native client
-client = clickhouse_connect.get_client(
-    host="${config.host}",
-    port=${safePort},
-    username="${config.username}",
-    password="${config.password}",
-    database="${config.databaseName}"
-)
+//     return `
+// # Query ClickHouse tables using native client
+// client = clickhouse_connect.get_client(
+//     host="${config.host}",
+//     port=${safePort},
+//     username="${config.username}",
+//     password="${config.password}",
+//     database="${config.databaseName}"
+// )
 
-try:
-    # Use ClickHouse native query_df method
-    tables = client.query_df("${query}")
-    if len(tables) > 0:
-        tables.iloc[:, 0] = tables.iloc[:, 0].astype(str).str.strip()
-        formatted_output = ", ".join(tables.iloc[:, 0].tolist())
-    else:
-        formatted_output = ""
-    print(formatted_output)
-except Exception as e:
-    print(f"Error querying ClickHouse: {e}")
-    formatted_output = ""
-finally:
-    client.close()
-`;
-  }
+// try:
+//     # Use ClickHouse native query_df method
+//     tables = client.query_df("${query}")
+//     if len(tables) > 0:
+//         tables.iloc[:, 0] = tables.iloc[:, 0].astype(str).str.strip()
+//         formatted_output = ", ".join(tables.iloc[:, 0].tolist())
+//     else:
+//         formatted_output = ""
+//     print(formatted_output)
+// except Exception as e:
+//     print(f"Error querying ClickHouse: {e}")
+//     formatted_output = ""
+// finally:
+//     client.close()
+// `;
+//   }
 }

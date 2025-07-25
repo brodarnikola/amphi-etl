@@ -344,7 +344,7 @@ export class RequestService {
       for( const connection of allConnections ) {  
         let stopLoop = false;
         for( const variable of connection.variables ) { 
-          if (variable.name == escapedSchemaName) {
+          if (variable.name == escapedSchemaName && connection.connectionType === "Postgres" ) {
             correctSchemaName = variable.value;
             stopLoop = true;
             console.log("correctSchemaName:", correctSchemaName);
@@ -469,11 +469,39 @@ print(formatted_output)
     nodeId: any,
   ): any {
     setLoadings(true);
+ 
+    console.log("Retrieve table list with schemaName 11:", schemaName, "and query:", query);
+
+    console.log("Retrieve table list with tableName 22:", tableName);
+
+    let correctSchemaName = schemaName;
+    if(correctSchemaName.startsWith('{') && correctSchemaName.endsWith('}')) {
+
+      const allConnections = PipelineService.getConnections(context.model.toString());
+      console.log("allConnections 22:", allConnections); 
+
+      const escapedSchemaName = schemaName.substring(1, schemaName.length-1)
+      console.log("escapedSchemaName 22:", escapedSchemaName); 
+
+      for( const connection of allConnections ) {  
+        let stopLoop = false;
+        for( const variable of connection.variables ) { 
+          if (variable.name == escapedSchemaName && connection.connectionType === "Postgres" ) {
+            correctSchemaName = variable.value;
+            stopLoop = true;
+            console.log("correctSchemaName 22:", correctSchemaName);
+            break;
+          }  
+        }
+        if( stopLoop ) break;
+      } 
+    }
 
     // Escape and replace schema and table in the query
     let escapedQuery = query.replace(/"/g, '\\"');
     escapedQuery = escapedQuery
-      .replace(/{{schema}}/g, schemaName)
+      //.replace(/{{schema}}/g, schemaName)
+      .replace(/{{schema}}/g, correctSchemaName)
       .replace(/{{table}}/g, tableName);
 
     // Get environment and connection code
