@@ -330,8 +330,8 @@ export class RequestService {
   ): any {
     setLoadings(true);
 
-    console.log("Retrieve table list with schemaName:", schemaName, "and query:", query);
-    console.log("Retrieve nodeId:", nodeId);
+    //console.log("Retrieve table list with schemaName:", schemaName, "and query:", query);
+    //console.log("Retrieve nodeId:", nodeId);
 
     let correctSchemaName = schemaName; 
     if(correctSchemaName.startsWith('{') && correctSchemaName.endsWith('}')) {
@@ -348,7 +348,7 @@ export class RequestService {
           if (variable.name == escapedSchemaName && connection.connectionType === "Postgres" ) {
             correctSchemaName = variable.value;
             stopLoop = true;
-            console.log("correctSchemaName:", correctSchemaName);
+            //console.log("correctSchemaName:", correctSchemaName);
             break;
           }  
         }
@@ -360,19 +360,14 @@ export class RequestService {
     let escapedQuery = query.replace(/"/g, '\\"'); 
  
     escapedQuery = escapedQuery.replace(/{{schema}}/g, correctSchemaName);
-
-    console.log("Escaped query: 22", escapedQuery);
-
+ 
     // Get environment and connection code
     const envVariableCode = CodeGenerator.getEnvironmentVariableCode(context.model.toString(), componentService);
     const connectionCode = CodeGenerator.getConnectionCode(context.model.toString(), componentService);
 
     // Get component and data for the node
     const { component, data } = CodeGenerator.getComponentAndDataForNode(nodeId, componentService, context.model.toString());
-
-    console.log("component 22:", component);
-    console.log("data 22:", data);
-
+ 
     if (!component) {
       console.error("Component or data not found.");
       setLoadings(false);
@@ -388,31 +383,14 @@ export class RequestService {
 
     // Generate the import statements string (one per line)
     const importStatements = imports.map((imp: string) => `${imp}`).join('\n');
-
-    console.log("Build python code string");
-    console.log("component.name:", component.name);
-    console.log("component._name", component._name); 
+  
     // Build the Python code string
     let code = "";
-    if( component._name == "ClickHouse Output" ) {
-      console.log("Build python code string FOR CLICKHOUSE");
-      const contextNode = PipelineService.getNodeById(context.model.toString(), nodeId);
-      const componentType = contextNode?.type;
-      console.log("contextNode 11:", contextNode);
-      console.log("componentType 22:", componentType);
-      //const component = componentService.getComponent(componentType);
-      //const config = contextNode?.data;
-
-      //console.log("config 11:", config);
-
+    if( component._name == "ClickHouse Output" ) { 
+       
       const port = parseInt(data.port, 10);
       const safePort = isNaN(port) ? 8123 : port;
-
-      console.log("config safePort 11:", safePort);
-
-      console.log("Using ClickHouse table query code");
-      //const tableQueryCode = component.generateTableQueryCode({ config, query: escapedQuery });
-
+ 
       code =  `
 !pip install --quiet ${dependencyString} --disable-pip-version-check
 ${importStatements}
@@ -443,9 +421,7 @@ except Exception as e:
 finally:
     client.close() 
 `;
-
-      console.log("Generated code for ClickHouse:", code);
-
+   
     }
     else {
       code =  `
@@ -466,7 +442,6 @@ print(formatted_output)
 `;
     }
    
-
     // Format any remaining variables in the code
     code = CodeGenerator.formatVariables(code);
 
@@ -534,18 +509,18 @@ print(formatted_output)
   ): any {
     setLoadings(true);
  
-    console.log("Retrieve table list with schemaName 11:", schemaName, "and query:", query);
+    //console.log("Retrieve table list with schemaName 11:", schemaName, "and query:", query);
 
-    console.log("Retrieve table list with tableName 22:", tableName);
+    //console.log("Retrieve table list with tableName 22:", tableName);
 
     let correctSchemaName = schemaName;
     if(correctSchemaName.startsWith('{') && correctSchemaName.endsWith('}')) {
 
       const allConnections = PipelineService.getConnections(context.model.toString());
-      console.log("allConnections 22:", allConnections); 
+      //console.log("allConnections 22:", allConnections); 
 
       const escapedSchemaName = schemaName.substring(1, schemaName.length-1)
-      console.log("escapedSchemaName 22:", escapedSchemaName); 
+      //console.log("escapedSchemaName 22:", escapedSchemaName); 
 
       for( const connection of allConnections ) {  
         let stopLoop = false;
@@ -553,7 +528,7 @@ print(formatted_output)
           if (variable.name == escapedSchemaName && connection.connectionType === "Postgres" ) {
             correctSchemaName = variable.value;
             stopLoop = true;
-            console.log("correctSchemaName 22:", correctSchemaName);
+            //console.log("correctSchemaName 22:", correctSchemaName);
             break;
           }  
         }
@@ -602,7 +577,45 @@ print(formatted_output)
     const importStatements = imports.map((imp: string) => `${imp}`).join('\n');
 
     // Build the Python code string
-    let code = `
+    let code = "";
+    if (component._name === "ClickHouse Output") {
+
+      const port = parseInt(data.port, 10);
+      const safePort = isNaN(port) ? 8123 : port;
+
+      code =  `
+!pip install --quiet ${dependencyString} --disable-pip-version-check
+${importStatements}
+${envVariableCode}
+${connectionCode}
+
+client = clickhouse_connect.get_client(
+    host="${data.host}",
+    port=${safePort},
+    username="${data.username}",
+    password="${data.password}",
+    database="${data.databaseName}"
+)
+      
+try:
+    # Use ClickHouse native query_df method
+    tables = client.query_df("${escapedQuery}")
+except Exception as e:
+    print(f"Error querying ClickHouse: {e}")
+    #formatted_output = ""
+finally:
+    client.close() 
+    schema = pd.DataFrame(tables)  
+    print("Available columns in ClickHouse table:")
+    print(schema.columns.tolist())  # Print the column names
+    print("Available columns in ClickHouse table 2:")
+    print(schema)
+    ${pythonExtraction}
+`; 
+    } 
+
+    else { 
+      code = `
 !pip install --quiet ${dependencyString} --disable-pip-version-check
 ${importStatements}
 ${envVariableCode}
@@ -616,13 +629,13 @@ schema = pd.read_sql(query, con=engine)
 
 ${pythonExtraction}
 `;
-
-
+    }
+    
     // Format any remaining variables in the code
     code = CodeGenerator.formatVariables(code);
-
+ 
     const future = context.sessionContext.session.kernel!.requestExecute({ code: code });
-
+ 
     future.onReply = (reply) => {
       if (reply.content.status == 'ok') {
         // Execution was successful

@@ -97,6 +97,7 @@ export class ClickhouseOutput extends BaseCoreComponent {
           imports: ["clickhouse_connect"],
           drivers: "clickhouse_driver",
           query: `SHOW COLUMNS FROM {{table}};`,
+          pythonExtraction: `column_info = schema[["field", "type"]]\nformatted_output = ", ".join([f"{row['field']} ({row['type']})" for _, row in column_info.iterrows()])\nprint(formatted_output)`,
           //pythonExtraction: `print("Available columns in ClickHouse table:")`,
           typeOptions: [
             { value: "UInt8", label: "UInt8" },
