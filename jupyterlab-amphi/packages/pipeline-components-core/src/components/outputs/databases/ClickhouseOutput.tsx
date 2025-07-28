@@ -147,29 +147,16 @@ export class ClickhouseOutput extends BaseCoreComponent {
     return ["import pandas as pd", "import clickhouse_connect"];
   }
 
-  public generateDatabaseConnectionCode({ config, connectionName }): string {
-  
-   console.log("config", config); 
-   console.log("connectionName", connectionName); 
-   console.log("safePort 11", config.port); 
-   console.log("config.host", config.host);
-   console.log("config.username", config.username);
-   console.log("config.password", config.password);
-   console.log("config.databaseName", config.databaseName); 
+  public generateDatabaseConnectionCode({ config, connectionName }): string { 
 
    const port = parseInt(config.port, 10);
    const safePort = isNaN(port) ? 8123 : port;
-   console.log("safePort 22", safePort); 
-
-   // 
+   console.log("safePort 22", safePort);  
    // # Connect to ClickHouse 
-   return `${connectionName} = clickhouse_connect.get_client(
-       host="${config.host}",
-       port=${safePort},
-       username="${config.username}",
-       password="${config.password}",
-       database="${config.databaseName}"
-   ) `;
+   return `clickhouse_connect.get_client(
+  host='${config.host}', port=${safePort}, username='${config.username}', password='${config.password}', database='${config.databaseName}'
+)
+`;
   } 
 
   public generateComponentCode({ config, inputName }): string {
@@ -226,8 +213,8 @@ ${inputName} = ${inputName}[[${selectedColumns}]]
 
     return `
 # Connect to ClickHouse 
-print(f"Connecting to ClickHouse at {config.host}:{safePort} with database '{config.databaseName}'")
-${inputName}Client = "${this.generateDatabaseConnectionCode({ config, connectionName: uniqueEngineName })}";
+print(f"OLE OLE Connecting to ClickHouse at ${config.host}:${safePort} with database '${config.databaseName}'")
+${inputName}Client = ${this.generateDatabaseConnectionCode({ config, connectionName: uniqueEngineName })}
 print(f"Connected to ClickHouse client: {${inputName}Client}")
 
 ${mappingsCode}${columnsCode}
