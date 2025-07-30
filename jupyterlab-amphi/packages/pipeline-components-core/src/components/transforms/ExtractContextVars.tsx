@@ -7,16 +7,24 @@ export class ExtractContextVars extends BaseCoreComponent {
       custCodeColumn: "",
       versionColumn: "",
       custCodeVarName: "pipeline_cust_code",
-      versionVarName: "pipeline_version"
+      versionVarName: "pipeline_version",
+      manualVariables: []
     };
     const form = {
-      idPrefix: "component__form",
+      idPrefix: "component__form", 
       fields: [
         {
           type: "info",
           label: "Instructions",
           id: "instructions",
-          text: "Extract values from the first row and store them as global variables accessible throughout the pipeline.",
+          text: "Extract values from DataFrame columns and/or define manual variables. All variables are stored as global variables accessible throughout the pipeline.",
+          advanced: false
+        },
+        {
+          type: "info",
+          label: "Extract from DataFrame",
+          id: "dfSection",
+          text: "Extract values from the first row of the DataFrame:",
           advanced: false
         },
         {
@@ -38,7 +46,7 @@ export class ExtractContextVars extends BaseCoreComponent {
           label: "Customer Code Variable Name",
           id: "custCodeVarName",
           placeholder: "pipeline_cust_code",
-          tooltip: "Name for the global variable that will store the customer code",
+          tooltip: "Name for the global variable that will store the customer code (pipeline_ prefix will be added automatically)",
           advanced: true
         },
         {
@@ -46,14 +54,35 @@ export class ExtractContextVars extends BaseCoreComponent {
           label: "Version Variable Name", 
           id: "versionVarName",
           placeholder: "pipeline_version",
-          tooltip: "Name for the global variable that will store the version",
+          tooltip: "Name for the global variable that will store the version (pipeline_ prefix will be added automatically)",
           advanced: true
+        },
+        {
+          type: "info",
+          label: "Manual Variables",
+          id: "manualSection",
+          text: "Define variables manually with custom names and values:",
+          advanced: false
+        },
+        {
+          type: "keyvalue",
+          label: "Manual Variables",
+          id: "manualVariables",
+          placeholders: { key: "variable name", value: "variable value" },
+          tooltip: "Add custom variables with their values. The pipeline_ prefix will be added automatically to variable names.",
+          advanced: false
         }
       ],
     };
-    const description = "Extract customer code and version from the first row of the DataFrame and store them as global variables for use throughout the pipeline. The DataFrame passes through unchanged.";
+    const description = "Extract context variables from DataFrame columns and/or define manual variables. All variables are stored as global variables accessible throughout the pipeline. The DataFrame passes through unchanged.";
 
     super("Extract Context Variables", "extractContextVars", description, "pandas_df_processor", [], "transforms", extractIcon, defaultConfig, form);
+  }
+
+  private ensurePipelinePrefix(varName: string): string {
+    if (!varName) return "pipeline_";
+    const trimmed = varName.trim();
+    return trimmed.startsWith("pipeline_") ? trimmed : `pipeline_${trimmed}`;
   }
 
   public provideImports({ config }): string[] {
@@ -61,28 +90,67 @@ export class ExtractContextVars extends BaseCoreComponent {
   }
 
   public generateComponentCode({ config, inputName, outputName }): string {
-    let code = `# Extract context variables from first row\n`;
-    
-    // Handle customer code column
-    if (config.custCodeColumn && config.custCodeColumn.value) {
-      const custCodeColumnName = config.custCodeColumn.value;
-      const custCodeColumnIsNamed = config.custCodeColumn.named;
-      const custCodeColumnRef = custCodeColumnIsNamed ? `'${custCodeColumnName}'` : custCodeColumnName;
-      const custCodeVarName = config.custCodeVarName || "pipeline_cust_code";
+    let code = "";
+    let hasDataFrameExtraction = false;
+    let hasManualVariables = false;
+
+    // Section 1: Extract from DataFrame
+    if ((config.custCodeColumn && config.custCodeColumn.value) || 
+        (config.versionColumn && config.versionColumn.value)) {
+      hasDataFrameExtraction = true;
+      code += `# Extract context variables from DataFrame\n`;
       
-      code += `${custCodeVarName} = ${inputName}.iloc[0][${custCodeColumnRef}]\n`;
-      code += `print(f"Extracted customer code: {${custCodeVarName}}")\n`;
+      // Handle customer code column
+      if (config.custCodeColumn && config.custCodeColumn.value) {
+        const custCodeColumnName = config.custCodeColumn.value;
+        const custCodeColumnIsNamed = config.custCodeColumn.named;
+        const custCodeColumnRef = custCodeColumnIsNamed ? `'${custCodeColumnName}'` : custCodeColumnName;
+        const custCodeVarName = this.ensurePipelinePrefix(config.custCodeVarName || "cust_code");
+        
+        code += `${custCodeVarName} = ${inputName}.iloc[0][${custCodeColumnRef}]\n`;
+        code += `print(f"Extracted customer code: {${custCodeVarName}}")\n`;
+      }
+      
+      // Handle version column  
+      if (config.versionColumn && config.versionColumn.value) {
+        const versionColumnName = config.versionColumn.value;
+        const versionColumnIsNamed = config.versionColumn.named;
+        const versionColumnRef = versionColumnIsNamed ? `'${versionColumnName}'` : versionColumnName;
+        const versionVarName = this.ensurePipelinePrefix(config.versionVarName || "version");
+        
+        code += `${versionVarName} = ${inputName}.iloc[0][${versionColumnRef}]\n`;
+        code += `print(f"Extracted version: {${versionVarName}}")\n`;
+      }
     }
-    
-    // Handle version column  
-    if (config.versionColumn && config.versionColumn.value) {
-      const versionColumnName = config.versionColumn.value;
-      const versionColumnIsNamed = config.versionColumn.named;
-      const versionColumnRef = versionColumnIsNamed ? `'${versionColumnName}'` : versionColumnName;
-      const versionVarName = config.versionVarName || "pipeline_version";
+
+    // Section 2: Manual Variables
+    if (config.manualVariables && config.manualVariables.length > 0) {
+      hasManualVariables = true;
+      if (hasDataFrameExtraction) {
+        code += `\n`;
+      }
+      code += `# Define manual context variables\n`;
       
-      code += `${versionVarName} = ${inputName}.iloc[0][${versionColumnRef}]\n`;
-      code += `print(f"Extracted version: {${versionVarName}}")\n`;
+      config.manualVariables.forEach(variable => {
+        if (variable.key && variable.value !== undefined) {
+          const varName = this.ensurePipelinePrefix(variable.key);
+          // Handle different value types
+          let valueStr;
+          if (typeof variable.value === 'string') {
+            valueStr = `"${variable.value}"`;
+          } else {
+            valueStr = String(variable.value);
+          }
+          
+          code += `${varName} = ${valueStr}\n`;
+          code += `print(f"Set manual variable: ${varName} = {${varName}}")\n`;
+        }
+      });
+    }
+
+    // If no variables are defined, add a comment
+    if (!hasDataFrameExtraction && !hasManualVariables) {
+      code += `# No context variables defined\n`;
     }
     
     code += `\n# Pass through the DataFrame unchanged\n`;
@@ -90,4 +158,4 @@ export class ExtractContextVars extends BaseCoreComponent {
     
     return code;
   }
-} 
+}
