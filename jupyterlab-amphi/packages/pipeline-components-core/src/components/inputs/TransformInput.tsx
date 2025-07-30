@@ -59,32 +59,75 @@ export class TransformInput extends PipelineComponent<ComponentItem>() {
         }, [data]);
 
         const validateRange = (range: string): boolean => {
-            const pattern = /^[a-zA-Z]\d+-[a-zA-Z]\d+$/;
+            // Updated pattern to support multi-letter columns (A-ZZ)
+            const pattern = /^[a-zA-Z]+\d+-[a-zA-Z]+\d+$/;
             if (!pattern.test(range)) {
-                setRangeError('Invalid format. Use format like A1-B10');
+                setRangeError('Invalid format. Use format like A1-B10 or AA1-ZZ10000000');
                 return false;
             }
 
             const [start, end] = range.split('-');
-            const startLetter = start[0].toUpperCase();
-            const endLetter = end[0].toUpperCase();
 
-            // if (startLetter !== endLetter) {
-            //   setRangeError('Range must be within same letter group (e.g., A1-A10)');
-            //   return false;
-            // }
+            // Extract column letters and row numbers
+            const startMatch = start.match(/^([a-zA-Z]+)(\d+)$/);
+            const endMatch = end.match(/^([a-zA-Z]+)(\d+)$/);
 
-            const startNum = parseInt(start.slice(1));
-            const endNum = parseInt(end.slice(1));
-
-            if (isNaN(startNum) || isNaN(endNum)) {
-                setRangeError('Numbers must follow the letter');
+            if (!startMatch || !endMatch) {
+                setRangeError('Invalid format. Letters must be followed by numbers');
                 return false;
             }
 
-            //if (startNum >= endNum) {
-            if (startNum > endNum) {
-                setRangeError('Start number must be less than end number');
+            const startCol = startMatch[1].toUpperCase();
+            const startNum = parseInt(startMatch[2]);
+            const endCol = endMatch[1].toUpperCase();
+            const endNum = parseInt(endMatch[2]);
+
+            // Validate column letters (A-ZZ range)
+            const isValidColumn = (col: string): boolean => {
+                if (col.length === 0 || col.length > 2) return false;
+                return /^[A-Z]+$/.test(col);
+            };
+
+            if (!isValidColumn(startCol) || !isValidColumn(endCol)) {
+                setRangeError('Invalid column letters. Use A-Z or AA-ZZ format');
+                return false;
+            }
+
+            // Convert column letters to numbers for comparison (A=1, B=2, ..., Z=26, AA=27, etc.)
+            const colToNum = (col: string): number => {
+                let result = 0;
+                for (let i = 0; i < col.length; i++) {
+                    result = result * 26 + (col.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+                }
+                return result;
+            };
+
+            const startColNum = colToNum(startCol);
+            const endColNum = colToNum(endCol);
+
+            // Validate row numbers
+            if (isNaN(startNum) || isNaN(endNum) || startNum < 1 || endNum < 1) {
+                setRangeError('Row numbers must be positive integers');
+                return false;
+            }
+
+            // Validate range limits (up to ZZ10000000)
+            const maxColNum = colToNum('ZZ'); // 702
+            const maxRowNum = 10000000;
+
+            if (startColNum > maxColNum || endColNum > maxColNum) {
+                setRangeError('Column range exceeds maximum (ZZ)');
+                return false;
+            }
+
+            if (startNum > maxRowNum || endNum > maxRowNum) {
+                setRangeError('Row number exceeds maximum (10000000)');
+                return false;
+            }
+
+            // Check if start is before end (either by column or by row if same column)
+            if (startColNum > endColNum || (startColNum === endColNum && startNum > endNum)) {
+                setRangeError('Start cell must be before or same as end cell');
                 return false;
             }
 
@@ -344,8 +387,17 @@ print(f"Total keys in input: {len(${outputName}_dict)}")
 
 # Create helper function for range comparison
 def in_range(key, ranges):
-    if not key or len(key) < 2 or not key[0].isalpha() or not key[1:].isdigit():
+    if not key or len(key) < 2:
         return False
+    
+    # Extract letter and number parts for multi-letter columns
+    import re
+    match = re.match(r'^([A-Z]+)(\\d+)$', key.upper())
+    if not match:
+        return False
+    
+    key_letters = match.group(1)
+    key_num = int(match.group(2))
 
     for range_str in ranges:
         if '-' not in range_str:
@@ -355,42 +407,34 @@ def in_range(key, ranges):
         if len(start) < 2 or len(end) < 2:
             continue
 
-        # Extract letter and number parts
-        key_letter = key[0].upper()
-        key_num = int(key[1:])
+        # Extract letter and number parts for start and end
+        start_match = re.match(r'^([A-Z]+)(\\d+)$', start.upper())
+        end_match = re.match(r'^([A-Z]+)(\\d+)$', end.upper())
+        
+        if not start_match or not end_match:
+            continue
 
-        start_letter = start[0].upper()
-        start_num = int(start[1:]) if start[1:].isdigit() else 0
+        start_letters = start_match.group(1)
+        start_num = int(start_match.group(2))
+        end_letters = end_match.group(1)
+        end_num = int(end_match.group(2))
 
-        end_letter = end[0].upper()
-        end_num = int(end[1:]) if end[1:].isdigit() else float('inf')
+        # Convert multi-letter columns to numeric values for comparison
+        def column_to_num(col_str):
+            result = 0
+            for char in col_str:
+                result = result * 26 + (ord(char) - ord('A') + 1)
+            return result
 
-        # Convert letters to ASCII values for comparison
-        key_ord = ord(key_letter)
-        start_ord = ord(start_letter)
-        end_ord = ord(end_letter)
+        key_col_num = column_to_num(key_letters)
+        start_col_num = column_to_num(start_letters)
+        end_col_num = column_to_num(end_letters)
 
-        # Check if key is within the letter range
-        if start_ord <= key_ord <= end_ord:
-            
-            # For same-letter ranges, check number
-            if key_letter == start_letter and key_letter == end_letter:
-                if start_num <= key_num <= end_num:
-                    return True
-            else:
-                # Multi-column range (e.g., E5-G8)
-                if key_letter == start_letter:
-                    # For start column, row must be >= start_num AND <= end_num
-                    is_in_range = start_num <= key_num <= end_num
-                elif key_letter == end_letter:
-                    # For end column, row must be >= start_num AND <= end_num  
-                    is_in_range = start_num <= key_num <= end_num
-                else:
-                    # For middle columns, row must be within the range bounds
-                    is_in_range = start_num <= key_num <= end_num
-
-                if is_in_range: 
-                    return True
+        # Check if key is within the column range
+        if start_col_num <= key_col_num <= end_col_num:
+            # Check if key is within the row range
+            if start_num <= key_num <= end_num:
+                return True
     
     return False
 
@@ -401,34 +445,55 @@ ${outputName}_filtered = {
 }
 
 # Add missing columns with null values for each range
+def num_to_column(num):
+    result = ""
+    while num > 0:
+        num -= 1
+        result = chr(num % 26 + ord('A')) + result
+        num //= 26
+    return result
+
+def column_to_num(col_str):
+    result = 0
+    for char in col_str:
+        result = result * 26 + (ord(char) - ord('A') + 1)
+    return result
+
 for range_str in ${JSON.stringify(ranges)}:
-  if '-' not in range_str:
-      continue
+    if '-' not in range_str:
+        continue
    
-  start, end = range_str.split('-')
-  if len(start) < 2 or len(end) < 2:
-      continue
+    start, end = range_str.split('-')
+    if len(start) < 2 or len(end) < 2:
+        continue
     
-  start_letter = start[0].upper()
-  end_letter = end[0].upper()
-  start_num = int(start[1:]) if start[1:].isdigit() else 0
-  end_num = int(end[1:]) if end[1:].isdigit() else 0
+    import re
+    start_match = re.match(r'^([A-Z]+)(\\d+)$', start.upper())
+    end_match = re.match(r'^([A-Z]+)(\\d+)$', end.upper())
     
-  start_ord = ord(start_letter)
-  end_ord = ord(end_letter)
+    if not start_match or not end_match:
+        continue
     
-  # For each letter in the range
-  for letter_ord in range(start_ord, end_ord + 1):
-    letter = chr(letter_ord)
+    start_letters = start_match.group(1)
+    end_letters = end_match.group(1)
+    start_num = int(start_match.group(2))
+    end_num = int(end_match.group(2))
+    
+    start_col_num = column_to_num(start_letters)
+    end_col_num = column_to_num(end_letters)
+    
+    # For each column in the range
+    for col_num in range(start_col_num, end_col_num + 1):
+        col_letters = num_to_column(col_num)
         
-    # Check if any key exists for this letter in the range
-    letter_exists = any(k.startswith(letter) for k in ${outputName}_filtered.keys())
+        # Check if any key exists for this column in the range
+        col_exists = any(k.upper().startswith(col_letters) for k in ${outputName}_filtered.keys())
         
-    if not letter_exists:
-      # Add a null entry for this letter
-      null_key = f"{letter}{start_num}"
-      ${outputName}_filtered[null_key] = np.nan #.astype("string")
-      print(f"Added missing column: {null_key} with null value")
+        if not col_exists:
+            # Add a null entry for this column
+            null_key = f"{col_letters}{start_num}"
+            ${outputName}_filtered[null_key] = np.nan
+            print(f"Added missing column: {null_key} with null value")
 
 # Convert all values to strings, use NaN for empty or NaN values
 #${outputName}_str = {k: str(v) if v is not None and not pd.isna(v) else np.nan for k, v in ${outputName}_filtered.items()}
@@ -447,7 +512,7 @@ print(f"KEY VALUE TRANSFORMS: Output Name: ${outputName}")
 def wide_transform(input_df):
     df = input_df.reset_index() 
     df.columns = ['cell', 'value'] 
-    df['col_letter'] = df['cell'].str.extract(r'([A-Z]+)', expand=False) 
+    df['col_letter'] = df['cell'].str.extract(r'([A-ZZ]+)', expand=False) 
     df['col_num'] = df['cell'].str.extract(r'(\\d+)', expand=False).astype(int)
 
     output = df.pivot(index='col_num', columns='col_letter', values='value')
